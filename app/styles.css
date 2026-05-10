@@ -1,0 +1,278 @@
+/* ============================================================
+   MATERIAL YOU DARK THEME - FULL SCREEN BULLET NOTE APP
+   File location: /app/styles.css
+   ============================================================ */
+
+/* WIP Indicator */
+.wip-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--error);
+    color: #1c1b1f;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 9999;
+    transition: opacity 200ms ease-in-out;
+    box-shadow: 0 4px 12px rgba(242, 184, 181, 0.3);
+}
+
+.wip-indicator:hover {
+    opacity: 0.8;
+}
+
+.wip-indicator.hidden {
+    display: none;
+}
+
+/* Focus Path Bar */
+.focus-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: var(--surface-container);
+    border-bottom: 1px solid var(--outline-variant);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    z-index: 999;
+}
+
+.focus-path {
+    font-size: 13px;
+    color: var(--on-surface-variant);
+    font-family: "Courier New", monospace;
+    letter-spacing: 0.5px;
+}
+
+.focus-path-item {
+    color: var(--primary);
+    cursor: pointer;
+    transition: color 100ms cubic-bezier(0.2, 0, 0.1, 1);
+}
+
+.focus-path-item:hover {
+    color: var(--tertiary);
+}
+
+/* Title Section */
+.title-section {
+    position: fixed;
+    top: 40px;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: var(--background);
+    padding: 24px 24px 16px 24px;
+    z-index: 998;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+#focusedTitle {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--tertiary);
+    margin: 0;
+    line-height: 1.2;
+    max-width: 900px;
+    width: 100%;
+    padding-bottom: 8px;
+}
+
+:root {
+    --primary: #d0bcff;
+    --secondary: #ccc2dc;
+    --tertiary: #f8b500;
+    --error: #f2b8b5;
+    --outline: #79747e;
+    --outline-variant: #49454e;
+    --background: #1c1b1f;
+    --on-background: #e6e1e5;
+    --surface: #1c1b1f;
+    --on-surface: #e6e1e5;
+    --surface-variant: #49454e;
+    --on-surface-variant: #cac7d0;
+    --surface-container: #201f26;
+    --surface-container-high: #2b2930;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+    background: var(--background);
+    color: var(--on-background);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--surface-container);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--outline-variant);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--outline);
+}
+
+::selection {
+    background: rgba(208, 188, 255, 0.3);
+    color: var(--on-background);
+}
+
+.editor {
+    width: 100%;
+    height: calc(100vh - 120px);
+    padding: 32px 24px;
+    overflow-y: auto;
+    overflow-x: auto;
+    margin-top: 120px;
+}
+
+.bullets-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.bullet-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 0;
+    line-height: 1.6;
+    position: relative;
+}
+
+.bullet-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    width: 100%;
+}
+
+.bullet-marker {
+    user-select: none;
+    color: var(--tertiary);
+    font-size: 20px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.bullet-input {
+    flex: 1;
+    border: none !important;
+    background: transparent !important;
+    outline: none !important;
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--on-background);
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1.6;
+    resize: none;
+    overflow: visible;
+    transition: none;
+    display: inline;
+    white-space: nowrap;
+    min-height: 24px;
+}
+
+.bullet-input:focus {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.bullet-input::placeholder {
+    color: var(--on-surface-variant);
+}
+
+.bullet-children {
+    margin-left: 0;
+}
+
+.toggle-children {
+    width: 16px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    color: var(--outline-variant);
+    font-size: 11px;
+    border-radius: 0;
+    transition:
+        transform 150ms cubic-bezier(0.2, 0, 0.1, 1),
+        color 100ms cubic-bezier(0.2, 0, 0.1, 1);
+    flex-shrink: 0;
+    margin-right: 0;
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    transform: rotate(0deg);
+}
+
+.toggle-children.hidden {
+    color: var(--outline-variant);
+    transform: rotate(-90deg);
+}
+
+.toggle-children:hover {
+    color: var(--primary);
+}
+
+.empty-state-msg {
+    text-align: center;
+    color: var(--on-surface-variant);
+    padding: 60px 24px;
+    font-size: 15px;
+    line-height: 1.6;
+    cursor: pointer;
+    transition: color 100ms cubic-bezier(0.2, 0, 0.1, 1);
+}
+
+.empty-state-msg:hover {
+    color: var(--primary);
+}
+
+@media (max-width: 768px) {
+    .editor {
+        padding: 16px;
+    }
+
+    .bullet-children {
+        margin-left: 20px;
+    }
+}

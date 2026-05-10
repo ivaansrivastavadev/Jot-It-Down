@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Jot It Down</title>
+        <link rel="icon" href="../assets/icon.svg" type="image/svg+xml" />
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <!-- Focus Path Bar -->
+        <div class="focus-bar">
+            <div class="focus-path" id="focusPath">/</div>
+        </div>
+
+        <!-- Focused Title -->
+        <div class="title-section" id="titleSection">
+            <h2 id="focusedTitle"></h2>
+        </div>
+
+        <!-- Full screen editor -->
+        <div class="editor">
+            <div class="bullets-container" id="bulletsContainer">
+                <!-- Bullets will be rendered here -->
+            </div>
+        </div>
+
+        <!-- Hidden input for import -->
+        <input
+            type="file"
+            id="fileInput"
+            style="display: none"
+            accept=".json"
+        />
+
+        <script src="db.js"></script>
+        <script src="minimal.js"></script>
+    </body>
+</html>
