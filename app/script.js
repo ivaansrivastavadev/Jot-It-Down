@@ -1,0 +1,1104 @@
+const state = {
+  nextId: 1,
+  root: { id: 0, text: '', children: [], completed: false, collapsed: false },
+  selectedId: null,
+  cursorOffset: 0,
+  focusIds: [],
+  history: [],
+  historyIndex: -1,
+  historyMerging: false,
+  isSearchOpen: false,
+  searchQuery: '',
+  isCheatsheetOpen: false,
+  isVersionOpen: false,
+  hideCompleted: false,
+  tagFilter: null,
+};
+
+let autosaveTimer = null;
+let pendingDeleteId = null;
+
+const KEYBINDS = [
+  ['enter', 'new sibling'],
+  ['tab', 'indent'],
+  ['shift+tab', 'outdent'],
+  ['ctrl+z', 'undo'],
+  ['ctrl+x', 'redo'],
+  ['ctrl+k', 'open search'],
+  ['ctrl+l', 'toggle complete'],
+  ['ctrl+]', 'zoom into node'],
+  ['ctrl+[', 'zoom out'],
+  ['ctrl+/', 'toggle this cheat sheet'],
+];
+
+function getNode(id) {
+  function walk(node) {
+    if (node.id === id) return node;
+    for (const child of node.children) {
+      const found = walk(child);
+      if (found) return found;
+    }
+    return null;
+  }
+  return walk(state.root);
+}
+
+function findParent(id) {
+  function walk(node, parent) {
+    if (node.id === id) return parent;
+    for (const child of node.children) {
+      const found = walk(child, node);
+      if (found) return found;
+    }
+    return null;
+  }
+  return walk(state.root, null);
+}
+
+function getNodeIndex(id) {
+  const parent = findParent(id);
+  if (!parent) return -1;
+  return parent.children.findIndex(c => c.id === id);
+}
+
+function createNode(text) {
+  return { id: state.nextId++, text, children: [], completed: false, collapsed: false };
+}
+
+function getVisibleNodes() {
+  const focusRoot = state.focusIds.length > 0
+    ? getNode(state.focusIds[state.focusIds.length - 1])
+    : state.root;
+
+  if (!focusRoot) return [];
+
+  const result = [];
+
+  function walk(node, depth) {
+    if (state.hideCompleted && node.completed && node.children.length === 0) return;
+    result.push({ ...node, _depth: depth, _isContext: false });
+    if (!node.collapsed && node.children.length > 0) {
+      for (let i = 0; i < node.children.length; i++) {
+        walk(node.children[i], depth + 1);
+      }
+    }
+  }
+
+  for (let i = 0; i < focusRoot.children.length; i++) {
+    walk(focusRoot.children[i], 0);
+  }
+
+  return result;
+}
+
+function getNodePath(id) {
+  const path = [];
+  let current = id;
+  while (current !== null && current !== 0) {
+    path.unshift(current);
+    const parent = findParent(current);
+    current = parent ? parent.id : null;
+  }
+  return path;
+}
+
+function cloneNode(node) {
+  return { ...node, children: node.children.map(cloneNode) };
+}
+
+function persistState() {
+  const data = {
+    root: cloneNode(state.root),
+    nextId: state.nextId,
+    selectedId: state.selectedId,
+    focusIds: [...state.focusIds],
+    hideCompleted: state.hideCompleted,
+    tagFilter: state.tagFilter,
+  };
+  saveCurrent(data);
+}
+
+function schedulePersist() {
+  if (autosaveTimer) clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    persistState();
+    autosaveTimer = null;
+  }, 1000);
+}
+
+function openVersionHistory() {
+  state.isVersionOpen = true;
+  document.getElementById('version-overlay').classList.add('open');
+  renderVersionList();
+}
+
+function closeVersionHistory() {
+  state.isVersionOpen = false;
+  document.getElementById('version-overlay').classList.remove('open');
+}
+
+function openSettings() {
+  document.getElementById('settings-overlay').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+
+function renderVersionList() {
+  const list = document.getElementById('version-list');
+  list.innerHTML = '<div class="search-empty">loading...</div>';
+  getVersions().then(versions => {
+    if (versions.length === 0) {
+      list.innerHTML = '<div class="search-empty">no versions saved</div>';
+      return;
+    }
+    let html = '';
+    for (const v of versions) {
+      const nodeCount = v.snapshot && v.snapshot.root ? countAllDescendants(v.snapshot.root) : 0;
+      html += `<div class="version-item">
+        <div>
+          <div class="v-time">${escapeHtml(v.timestamp)}</div>
+          <div class="v-info">${nodeCount} nodes</div>
+        </div>
+        <button class="v-restore" data-action="restore-version" data-version-id="${v.id}">restore</button>
+      </div>`;
+    }
+    list.innerHTML = html;
+  }).catch(() => {
+    list.innerHTML = '<div class="search-empty">failed to load versions</div>';
+  });
+}
+
+function restoreVersionFromHistory(versionId) {
+  restoreVersion(versionId).then(snapshot => {
+    if (!snapshot) return;
+    restoreSnapshot(snapshot);
+    state.history = [];
+    state.historyIndex = -1;
+    saveSnapshot();
+    closeVersionHistory();
+    render();
+  });
+}
+
+function saveSnapshot() {
+  if (state.historyMerging) return;
+  function clone(node) {
+    return { ...node, children: node.children.map(clone) };
+  }
+  const snapshot = {
+    root: clone(state.root),
+    nextId: state.nextId,
+    selectedId: state.selectedId,
+    focusIds: [...state.focusIds],
+  };
+  state.history = state.history.slice(0, state.historyIndex + 1);
+  state.history.push(snapshot);
+  if (state.history.length > 200) state.history.shift();
+  state.historyIndex = state.history.length - 1;
+  persistState();
+}
+
+function mergeSnapshot() {
+  state.historyMerging = true;
+  saveSnapshot();
+  state.historyMerging = false;
+}
+
+function undo() {
+  if (state.historyIndex <= 0) return;
+  state.historyIndex--;
+  restoreSnapshot(state.history[state.historyIndex]);
+  render();
+}
+
+function redo() {
+  if (state.historyIndex >= state.history.length - 1) return;
+  state.historyIndex++;
+  restoreSnapshot(state.history[state.historyIndex]);
+  render();
+}
+
+function restoreSnapshot(snapshot) {
+  function clone(node) {
+    return { ...node, children: node.children.map(clone) };
+  }
+  state.root = clone(snapshot.root);
+  state.nextId = snapshot.nextId;
+  state.selectedId = snapshot.selectedId;
+  state.focusIds = [...snapshot.focusIds];
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function formatNodeText(text, searchQuery) {
+  let html = escapeHtml(text);
+
+  if (searchQuery) {
+    const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(${escaped})`, 'gi');
+    html = html.replace(re, '<span class="hl">$1</span>');
+  }
+
+  html = html.replace(/(#[\w\u00C0-\u024F]+|#[\d]+[\w]*)/g, '<span class="tag">$1</span>');
+
+  if (!html) html = '<br>';
+  return html;
+}
+
+function getIndentPx(depth) {
+  return depth * 24 + 8;
+}
+
+function saveCurrentText() {
+  if (state.selectedId === null) return;
+  const el = document.querySelector(`[data-id="${state.selectedId}"] .node-text`);
+  if (el) {
+    const node = getNode(state.selectedId);
+    if (node) {
+      node.text = el.textContent || '';
+    }
+  }
+}
+
+function selectNode(id, offset) {
+  saveCurrentText();
+  state.selectedId = id;
+  state.cursorOffset = offset !== undefined ? offset : 0;
+  render();
+}
+
+function render() {
+  const container = document.getElementById('outliner');
+  const visibleNodes = getVisibleNodes();
+  const breadcrumb = document.getElementById('breadcrumb');
+
+  let bcHtml = '';
+  if (state.focusIds.length > 0) {
+    const items = [
+      '<span class="bc-item" data-zoom="root">jot-it-down</span>'
+    ];
+    for (let i = 0; i < state.focusIds.length; i++) {
+      const node = getNode(state.focusIds[i]);
+      if (!node) continue;
+      const isLast = i === state.focusIds.length - 1;
+      const label = node.text ? node.text.substring(0, 40) : 'untitled';
+      if (isLast) {
+        items.push(`<span class="bc-item bc-current">${escapeHtml(label)}</span>`);
+      } else {
+        items.push(`<span class="bc-item" data-zoom="${node.id}">${escapeHtml(label)}</span>`);
+      }
+    }
+    items.reverse();
+    bcHtml = items.map((item, idx) => {
+      const sep = idx > 0 ? '<span class="bc-sep">›</span>' : '';
+      return sep + item;
+    }).join('');
+  } else {
+    bcHtml = '<span class="bc-item bc-current">jot-it-down</span>';
+  }
+  breadcrumb.innerHTML = bcHtml;
+
+  if (state.tagFilter) {
+    const filtered = visibleNodes.filter(n => n.text.includes(state.tagFilter));
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="search-empty">no nodes with ' + escapeHtml(state.tagFilter) + '</div>';
+      return;
+    }
+    renderNodeList(container, filtered);
+    return;
+  }
+
+  if (visibleNodes.length === 0) {
+    container.innerHTML = '<div id="empty-state">nothing here yet</div>';
+    return;
+  }
+
+  renderNodeList(container, visibleNodes);
+  restoreFocus();
+}
+
+function renderNodeList(container, nodes) {
+  let html = '';
+  for (const n of nodes) {
+    const isSelected = n.id === state.selectedId;
+    const indent = getIndentPx(n._depth);
+    let classes = 'node';
+    if (isSelected) classes += ' selected';
+    if (n.completed) classes += ' completed';
+
+    const bulletHtml = `<span class="node-bullet" data-id="${n.id}">•</span>`;
+    const toggleHtml = n.children.length > 0 ? `<span class="node-toggle ${n.collapsed ? 'collapsed' : ''}" data-id="${n.id}">${n.collapsed ? '▸' : '▾'}</span>` : '';
+
+    let textHtml;
+    if (isSelected) {
+      textHtml = escapeHtml(n.text) || '<br>';
+    } else {
+      textHtml = formatNodeText(n.text, null);
+    }
+
+    html += `<div class="${classes}" data-id="${n.id}" data-depth="${n._depth}" style="padding-left:${indent}px">
+      ${toggleHtml}
+      ${bulletHtml}
+      <span class="node-text">${textHtml}</span>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function updateMenuIcon(active) {
+  const icon = document.querySelector('#menu-dropdown .menu-icon');
+  if (icon) {
+    icon.classList.toggle('active', active);
+  }
+}
+
+function restoreFocus() {
+  if (state.selectedId === null) return;
+  const el = document.querySelector(`[data-id="${state.selectedId}"] .node-text`);
+  if (!el) return;
+
+  if (el.innerHTML === '<br>' || el.innerHTML === '') {
+    el.innerHTML = '<br>';
+  }
+
+  el.contentEditable = 'true';
+  el.focus();
+
+  const text = el.textContent || '';
+  const offset = Math.min(state.cursorOffset, text.length);
+  try {
+    const range = document.createRange();
+    const sel = window.getSelection();
+    if (el.firstChild) {
+      range.setStart(el.firstChild, offset);
+    } else {
+      range.selectNodeContents(el);
+    }
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } catch (e) {
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
+function addSibling(text) {
+  if (state.selectedId === null) return createFirstNode(text);
+
+  const parent = findParent(state.selectedId);
+  if (!parent) return;
+  const idx = getNodeIndex(state.selectedId);
+  const newNode = createNode(text);
+  parent.children.splice(idx + 1, 0, newNode);
+  state.selectedId = newNode.id;
+  state.cursorOffset = 0;
+  saveSnapshot();
+  render();
+}
+
+function createFirstNode(text) {
+  const node = createNode(text);
+  state.root.children.push(node);
+  state.selectedId = node.id;
+  state.cursorOffset = 0;
+  saveSnapshot();
+  render();
+}
+
+function addChild() {
+  if (state.selectedId === null) return;
+  const parent = getNode(state.selectedId);
+  if (!parent) return;
+  const newNode = createNode('');
+  parent.children.unshift(newNode);
+  state.selectedId = newNode.id;
+  state.cursorOffset = 0;
+  saveSnapshot();
+  render();
+}
+
+function indentNode() {
+  if (state.selectedId === null) return;
+  saveCurrentText();
+  const parent = findParent(state.selectedId);
+  if (!parent) return;
+  const idx = getNodeIndex(state.selectedId);
+  if (idx <= 0) return;
+  const newParent = parent.children[idx - 1];
+  const [moved] = parent.children.splice(idx, 1);
+  newParent.children.push(moved);
+  saveSnapshot();
+  render();
+}
+
+function outdentNode() {
+  if (state.selectedId === null) return;
+  saveCurrentText();
+  const parent = findParent(state.selectedId);
+  if (!parent || parent.id === 0) return;
+  const grandparent = findParent(parent.id);
+  if (!grandparent) return;
+  const pIdx = grandparent.children.findIndex(c => c.id === parent.id);
+  const nodeIdx = parent.children.findIndex(c => c.id === state.selectedId);
+  const [moved] = parent.children.splice(nodeIdx, 1);
+  grandparent.children.splice(pIdx + 1, 0, moved);
+  saveSnapshot();
+  render();
+}
+
+function countAllDescendants(node) {
+  let count = 0;
+  for (const child of node.children) {
+    count += 1 + countAllDescendants(child);
+  }
+  return count;
+}
+
+function deleteNode(id) {
+  const node = getNode(id);
+  const totalDescendants = node ? countAllDescendants(node) : 0;
+  if (totalDescendants > 5) {
+    pendingDeleteId = id;
+    document.getElementById('confirm-overlay').classList.add('open');
+  } else {
+    removeNode(id);
+  }
+}
+
+function removeNode(id) {
+  if (id === null) return;
+  saveCurrentText();
+  const parent = findParent(id);
+  if (!parent) return;
+  const visibleBefore = getVisibleNodes();
+  const visibleIdx = visibleBefore.findIndex(n => n.id === id);
+  const idx = getNodeIndex(id);
+  parent.children.splice(idx, 1);
+  const visible = getVisibleNodes();
+  if (visible.length > 0) {
+    const newIdx = visibleIdx > 0 ? Math.min(visibleIdx - 1, visible.length - 1) : 0;
+    const target = visible[newIdx];
+    state.selectedId = target.id;
+    state.cursorOffset = target.text.length;
+  } else {
+    state.selectedId = null;
+    state.cursorOffset = 0;
+  }
+  saveSnapshot();
+  render();
+}
+
+function toggleComplete() {
+  if (state.selectedId === null) return;
+  saveCurrentText();
+  const node = getNode(state.selectedId);
+  if (!node) return;
+  node.completed = !node.completed;
+  saveSnapshot();
+  render();
+}
+
+function toggleCollapse(id) {
+  const node = getNode(id);
+  if (!node || node.children.length === 0) return;
+  node.collapsed = !node.collapsed;
+  saveSnapshot();
+  render();
+}
+
+function focusOnNode(id) {
+  saveCurrentText();
+  const path = getNodePath(id);
+  state.focusIds = path;
+  state.selectedId = null;
+  saveSnapshot();
+  render();
+  if (getVisibleNodes().length > 0) {
+    state.selectedId = getVisibleNodes()[0].id;
+  }
+  render();
+}
+
+function zoomIn() {
+  if (state.selectedId === null) return;
+  focusOnNode(state.selectedId);
+}
+
+function zoomOut() {
+  if (state.focusIds.length === 0) return;
+  saveCurrentText();
+  const prevFocus = state.focusIds.pop();
+  state.selectedId = prevFocus;
+  saveSnapshot();
+  render();
+}
+
+function zoomTo(id) {
+  if (id === 'root') {
+    if (state.focusIds.length > 0) {
+      state.selectedId = state.focusIds[0];
+      state.focusIds = [];
+      saveSnapshot();
+      render();
+    }
+    return;
+  }
+  const numId = parseInt(id, 10);
+  const idx = state.focusIds.indexOf(numId);
+  if (idx >= 0) {
+    state.focusIds = state.focusIds.slice(0, idx + 1);
+    const visible = getVisibleNodes();
+    state.selectedId = visible.length > 0 ? visible[0].id : null;
+    saveSnapshot();
+    render();
+  }
+}
+
+function moveUp() {
+  if (state.selectedId === null) return;
+  const parent = findParent(state.selectedId);
+  if (!parent) return;
+  const idx = getNodeIndex(state.selectedId);
+  if (idx <= 0) return;
+  [parent.children[idx - 1], parent.children[idx]] = [parent.children[idx], parent.children[idx - 1]];
+  saveSnapshot();
+  render();
+}
+
+function moveDown() {
+  if (state.selectedId === null) return;
+  const parent = findParent(state.selectedId);
+  if (!parent) return;
+  const idx = getNodeIndex(state.selectedId);
+  if (idx >= parent.children.length - 1) return;
+  [parent.children[idx], parent.children[idx + 1]] = [parent.children[idx + 1], parent.children[idx]];
+  saveSnapshot();
+  render();
+}
+
+function getParentOfSelected() {
+  if (state.selectedId === null) return null;
+  return findParent(state.selectedId);
+}
+
+function selectNext() {
+  const visible = getVisibleNodes();
+  if (visible.length === 0) return;
+  const idx = visible.findIndex(n => n.id === state.selectedId);
+  if (idx < visible.length - 1) {
+    selectNode(visible[idx + 1].id);
+  }
+}
+
+function selectPrev() {
+  const visible = getVisibleNodes();
+  if (visible.length === 0) return;
+  const idx = visible.findIndex(n => n.id === state.selectedId);
+  if (idx > 0) {
+    selectNode(visible[idx - 1].id);
+  }
+}
+
+function openSearch() {
+  state.isSearchOpen = true;
+  state.searchQuery = '';
+  const overlay = document.getElementById('search-overlay');
+  overlay.classList.add('open');
+  const input = document.getElementById('search-input');
+  input.value = '';
+  input.focus();
+  document.getElementById('search-results').innerHTML = '';
+}
+
+function closeSearch() {
+  state.isSearchOpen = false;
+  state.searchQuery = '';
+  document.getElementById('search-overlay').classList.remove('open');
+}
+
+function performSearch(query) {
+  state.searchQuery = query;
+  const resultsContainer = document.getElementById('search-results');
+  if (!query.trim()) {
+    resultsContainer.innerHTML = '';
+    return;
+  }
+
+  const allNodes = [];
+  function walk(node, depth) {
+    allNodes.push({ ...node, _depth: depth });
+    for (const child of node.children) walk(child, depth + 1);
+  }
+  for (const child of state.root.children) walk(child, 0);
+
+  const q = query.toLowerCase();
+  const matches = allNodes.filter(n => n.text.toLowerCase().includes(q));
+
+  if (matches.length === 0) {
+    resultsContainer.innerHTML = '<div class="search-empty">no matches</div>';
+    return;
+  }
+
+  let html = '';
+  for (const m of matches) {
+    const path = getNodePath(m.id);
+    const context = m._depth > 0 ? 'depth ' + m._depth : 'root';
+    const displayText = m.text.length > 80 ? m.text.substring(0, 80) + '...' : m.text;
+    const formatted = formatNodeText(displayText, query);
+    html += `<div class="search-result" data-id="${m.id}">
+      <span class="sr-depth">${m._depth}</span>
+      <div class="sr-text">${formatted}<span class="sr-context">${context}</span></div>
+    </div>`;
+  }
+  resultsContainer.innerHTML = html;
+}
+
+function toggleCheatsheet() {
+  state.isCheatsheetOpen = !state.isCheatsheetOpen;
+  document.getElementById('cheatsheet-overlay').classList.toggle('open', state.isCheatsheetOpen);
+}
+
+function exportPlainText() {
+  let result = '';
+  function walk(node, depth) {
+    if (node.id === 0) {
+      for (const child of node.children) walk(child, depth);
+      return;
+    }
+    result += '  '.repeat(depth) + '• ' + node.text + '\n';
+    for (const child of node.children) walk(child, depth + 1);
+  }
+  walk(state.root, 0);
+  return result;
+}
+
+function exportMarkdown() {
+  let result = '';
+  function walk(node, depth) {
+    if (node.id === 0) {
+      for (const child of node.children) walk(child, depth);
+      return;
+    }
+    const prefix = depth === 0 ? '- ' : '  '.repeat(depth) + '- ';
+    result += prefix + node.text + '\n';
+    for (const child of node.children) walk(child, depth + 1);
+  }
+  walk(state.root, 0);
+  return result;
+}
+
+function exportJSON() {
+  function serialize(node) {
+    return {
+      text: node.text,
+      completed: node.completed,
+      collapsed: node.collapsed,
+      children: node.children.map(serialize),
+    };
+  }
+  return JSON.stringify(state.root.children.map(serialize), null, 2);
+}
+
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function initCheatsheet() {
+  const grid = document.querySelector('.cheatsheet-grid');
+  for (const [key, desc] of KEYBINDS) {
+    const item = document.createElement('div');
+    item.className = 'cheatsheet-item';
+    item.innerHTML = `<span class="cheatsheet-key">${key}</span><span class="cheatsheet-desc">${desc}</span>`;
+    grid.appendChild(item);
+  }
+}
+
+function init() {
+  initCheatsheet();
+
+  const outliner = document.getElementById('outliner');
+  const searchInput = document.getElementById('search-input');
+  const searchOverlay = document.getElementById('search-overlay');
+  const cheatsheetOverlay = document.getElementById('cheatsheet-overlay');
+  const breadcrumb = document.getElementById('breadcrumb');
+  const menuBtn = document.getElementById('menu-btn');
+  const menuDropdown = document.getElementById('menu-dropdown');
+  const versionOverlay = document.getElementById('version-overlay');
+  const versionClose = document.getElementById('version-close');
+  const settingsOverlay = document.getElementById('settings-overlay');
+  const settingsClose = document.getElementById('settings-close');
+
+  loadCurrent().then(saved => {
+    if (saved) {
+      state.root = saved.root;
+      state.nextId = saved.nextId;
+      state.selectedId = saved.selectedId;
+      state.focusIds = saved.focusIds || [];
+      state.hideCompleted = saved.hideCompleted || false;
+      state.tagFilter = saved.tagFilter || null;
+    }
+  }).finally(() => {
+    render();
+    updateMenuIcon(state.hideCompleted);
+  });
+
+  setInterval(() => {
+    saveVersion({
+      root: cloneNode(state.root),
+      nextId: state.nextId,
+      selectedId: state.selectedId,
+      focusIds: [...state.focusIds],
+    });
+  }, 300000);
+
+  outliner.addEventListener('click', (e) => {
+    if (e.target.closest('#empty-state')) {
+      createFirstNode('');
+      return;
+    }
+    const nodeEl = e.target.closest('.node');
+    if (!nodeEl) return;
+
+    const id = parseInt(nodeEl.dataset.id, 10);
+
+    if (e.target.classList.contains('node-bullet')) {
+      focusOnNode(id);
+      return;
+    }
+
+    if (e.target.classList.contains('node-toggle')) {
+      toggleCollapse(id);
+      return;
+    }
+
+    if (e.target.classList.contains('node-text')) {
+      const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+      const offset = range ? range.startOffset : 0;
+      selectNode(id, offset);
+      return;
+    }
+
+    const tagEl = e.target.closest('.tag');
+    if (tagEl) {
+      const tagText = tagEl.textContent;
+      state.tagFilter = state.tagFilter === tagText ? null : tagText;
+      render();
+      return;
+    }
+
+    selectNode(id);
+  });
+
+  outliner.addEventListener('dblclick', (e) => {
+    const nodeEl = e.target.closest('.node');
+    if (!nodeEl) return;
+    const id = parseInt(nodeEl.dataset.id, 10);
+    const node = getNode(id);
+    if (node && node.children.length > 0) {
+      toggleCollapse(id);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (state.isSearchOpen) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeSearch();
+        return;
+      }
+      return;
+    }
+
+    if (state.isCheatsheetOpen) {
+      if (e.key === 'Escape' || (e.ctrlKey && e.key === '/')) {
+        e.preventDefault();
+        toggleCheatsheet();
+        return;
+      }
+      return;
+    }
+
+    if (document.getElementById('confirm-overlay').classList.contains('open')) {
+      if (e.key === 'y' || e.key === 'Enter' || e.key === 'Delete') {
+        e.preventDefault();
+        if (pendingDeleteId !== null) {
+          removeNode(pendingDeleteId);
+          pendingDeleteId = null;
+        }
+        document.getElementById('confirm-overlay').classList.remove('open');
+      } else if (e.key === 'n' || e.key === 'Backspace' || e.key === 'Escape') {
+        e.preventDefault();
+        pendingDeleteId = null;
+        document.getElementById('confirm-overlay').classList.remove('open');
+      }
+      return;
+    }
+
+    const ctrl = e.ctrlKey || e.metaKey;
+
+    if (ctrl && e.key === 'z') {
+      e.preventDefault();
+      undo();
+      return;
+    }
+
+    if (ctrl && e.key === 'x') {
+      e.preventDefault();
+      redo();
+      return;
+    }
+
+    if (ctrl && e.key === 'k') {
+      e.preventDefault();
+      openSearch();
+      return;
+    }
+
+    if (ctrl && e.key === 'l') {
+      e.preventDefault();
+      toggleComplete();
+      return;
+    }
+
+    if (ctrl && e.key === ']') {
+      e.preventDefault();
+      zoomIn();
+      return;
+    }
+
+    if (ctrl && e.key === '[') {
+      e.preventDefault();
+      zoomOut();
+      return;
+    }
+
+    if (ctrl && e.key === '/') {
+      e.preventDefault();
+      toggleCheatsheet();
+      return;
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      saveCurrentText();
+      const node = state.selectedId ? getNode(state.selectedId) : null;
+      const text = node ? node.text : '';
+      if (state.selectedId === null) {
+        createFirstNode('');
+      } else {
+        addSibling('');
+      }
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        outdentNode();
+      } else {
+        indentNode();
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectPrev();
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectNext();
+      return;
+    }
+
+    if (ctrl && e.shiftKey && e.key === 'Backspace') {
+      e.preventDefault();
+      if (state.selectedId !== null) {
+        deleteNode(state.selectedId);
+      }
+      return;
+    }
+
+    if (e.key === 'Backspace') {
+      if (state.selectedId !== null) {
+        const node = getNode(state.selectedId);
+        const el = document.querySelector(`[data-id="${state.selectedId}"] .node-text`);
+        const text = el ? el.textContent || '' : (node ? node.text : '');
+
+        if (text === '' || text.length === 0) {
+          e.preventDefault();
+          deleteNode(state.selectedId);
+          return;
+        }
+      }
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      if (state.selectedId !== null) {
+        saveCurrentText();
+        state.selectedId = null;
+        render();
+      }
+      return;
+    }
+  });
+
+  searchInput.addEventListener('input', (e) => {
+    performSearch(e.target.value);
+  });
+
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const firstResult = document.querySelector('.search-result');
+      if (firstResult) {
+        const id = parseInt(firstResult.dataset.id, 10);
+        closeSearch();
+        selectNode(id);
+      }
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const first = document.querySelector('.search-result');
+      if (first) first.focus();
+    }
+  });
+
+  searchOverlay.addEventListener('click', (e) => {
+    const result = e.target.closest('.search-result');
+    if (result) {
+      const id = parseInt(result.dataset.id, 10);
+      closeSearch();
+      selectNode(id);
+      return;
+    }
+    if (e.target === searchOverlay) {
+      closeSearch();
+    }
+  });
+
+  document.addEventListener('blur', (e) => {
+    const el = e.target;
+    if (el && el.classList && el.classList.contains('node-text') && el.contentEditable === 'true') {
+      saveCurrentText();
+    }
+  }, true);
+
+  updateMenuIcon(state.hideCompleted);
+
+  breadcrumb.addEventListener('click', (e) => {
+    const item = e.target.closest('.bc-item');
+    if (!item) return;
+    const zoomTarget = item.dataset.zoom;
+    if (zoomTarget) {
+      zoomTo(zoomTarget);
+    }
+  });
+
+  cheatsheetOverlay.addEventListener('click', (e) => {
+    if (e.target === cheatsheetOverlay || e.target.closest('#cheatsheet-close')) {
+      toggleCheatsheet();
+    }
+  });
+
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menuDropdown.classList.toggle('open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#menu-wrapper')) {
+      menuDropdown.classList.remove('open');
+    }
+  });
+
+  menuDropdown.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    menuDropdown.classList.remove('open');
+    if (action === 'toggle-hide-completed') {
+      state.hideCompleted = !state.hideCompleted;
+      updateMenuIcon(state.hideCompleted);
+      render();
+      if (state.selectedId !== null) restoreFocus();
+      schedulePersist();
+    } else if (action === 'settings') {
+      openSettings();
+    } else if (action === 'version-history') {
+      openVersionHistory();
+    }
+  });
+
+  versionOverlay.addEventListener('click', (e) => {
+    if (e.target === versionOverlay) {
+      closeVersionHistory();
+    }
+    const restoreBtn = e.target.closest('[data-action="restore-version"]');
+    if (restoreBtn) {
+      const versionId = parseInt(restoreBtn.dataset.versionId, 10);
+      restoreVersionFromHistory(versionId);
+    }
+  });
+
+  versionClose.addEventListener('click', closeVersionHistory);
+
+  settingsOverlay.addEventListener('click', (e) => {
+    if (e.target === settingsOverlay) {
+      closeSettings();
+      return;
+    }
+    const btn = e.target.closest('.settings-btn');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === 'export-text') {
+      downloadFile(exportPlainText(), 'jot-it-down.txt', 'text/plain');
+    } else if (action === 'export-markdown') {
+      downloadFile(exportMarkdown(), 'jot-it-down.md', 'text/markdown');
+    } else if (action === 'export-json') {
+      downloadFile(exportJSON(), 'jot-it-down.json', 'application/json');
+    }
+  });
+
+  settingsClose.addEventListener('click', closeSettings);
+
+  document.addEventListener('input', (e) => {
+    const el = e.target;
+    if (el && el.classList.contains('node-text') && el.contentEditable === 'true') {
+      const nodeEl = el.closest('.node');
+      if (nodeEl) {
+        const id = parseInt(nodeEl.dataset.id, 10);
+        if (id === state.selectedId) {
+          const node = getNode(state.selectedId);
+          if (node) {
+            node.text = el.textContent || '';
+          }
+          const sel = window.getSelection();
+          state.cursorOffset = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).startOffset : 0;
+          schedulePersist();
+        }
+      }
+    }
+  }, true);
+}
+
+document.addEventListener('DOMContentLoaded', init);

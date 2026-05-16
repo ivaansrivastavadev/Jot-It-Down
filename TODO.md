@@ -1,0 +1,21 @@
+- [x] --BUG-- Version history showing wrong number of nodes in previous numbers
+- [x] Change favicon to assets/icon.svg
+- [x] After deleting a node, the cursor should move at the end of the upper node text
+- [x] --BUG-- When deleting a parent which has less child nodes but the child nodes also have nested nodes which add up to more than 5, the modal dosent show up
+- [x] --BUG-- When using backspace to delete node, cursor teleports not to the upper node but at the parent. Fix
+- [x] --BUG-- Ctrl + Shift + Backspace should also delete the node not just remove the text
+- [x] If deleting a parent which has more than 5 nodes, ask for a warning, the modal keyboard shortcuts: y/enter/delete: delete, n/backspace: close modal and not delete parent 
+- [x] Add a close button just like in settings to the cheat sheet
+- [x] Revert the toggle size
+- [x] Settings should open a modal, move all export to settings
+- [x] Make the tittle centered in the top bar
+- [x] Move Hide completed onto triple dot menu
+- [x] In triple dot menu make settings button with icon
+- [x] --VBUG-- Make it when theres a lot of content for the top bar, add ... to the start and short it from the start
+- [x] --BUG-- When directly focusing a node which has a parent, the parent is not shown in the top bar (If using keyboard shortcuts) i suggest a single function that runs on the keyboard shortcuts and button press that opens the focus view
+- [x] Clicking on the node bullet focuses it to the focus that happens on Ctrl + ]
+- [x] Make the font bigger
+- [x] --BUG-- Clicking on the text in any node does not move the cursor to there, it moves it to the start of the node 
+- [x] Move export to triple dot menu
+- [x] Add styling for checkboxes
+- [x] Fix indentation
