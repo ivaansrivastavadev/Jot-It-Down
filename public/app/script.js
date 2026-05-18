@@ -650,18 +650,18 @@ function performSearch(query) {
     return;
   }
 
-  let html = '';
-  for (const m of matches) {
-    const path = getNodePath(m.id);
-    const context = m._depth > 0 ? 'depth ' + m._depth : 'root';
-    const displayText = m.text.length > 80 ? m.text.substring(0, 80) + '...' : m.text;
-    const formatted = formatNodeText(displayText, query);
-    html += `<div class="search-result" data-id="${m.id}">
-      <span class="sr-depth">${m._depth}</span>
-      <div class="sr-text">${formatted}<span class="sr-context">${context}</span></div>
-    </div>`;
-  }
-  resultsContainer.innerHTML = html;
+   let html = '';
+   for (const m of matches) {
+     const path = getNodePath(m.id);
+     const context = m._depth > 0 ? 'depth ' + m._depth : 'root';
+     const displayText = m.text.length > 80 ? m.text.substring(0, 80) + '...' : m.text;
+     const formatted = formatNodeText(displayText, query);
+     html += `<div class="search-result" data-id="${m.id}" tabindex="0">
+       <span class="sr-depth">${m._depth}</span>
+       <div class="sr-text">${formatted}<span class="sr-context">${context}</span></div>
+     </div>`;
+   }
+   resultsContainer.innerHTML = html;
 }
 
 function toggleCheatsheet() {
@@ -676,7 +676,9 @@ function exportPlainText() {
       for (const child of node.children) walk(child, depth);
       return;
     }
-    result += '  '.repeat(depth) + '• ' + node.text + '\n';
+    const prefix = '  '.repeat(depth);
+    const text = node.completed ? `~~${node.text}~~` : node.text;
+    result += prefix + text + '\n';
     for (const child of node.children) walk(child, depth + 1);
   }
   walk(state.root, 0);
@@ -690,8 +692,9 @@ function exportMarkdown() {
       for (const child of node.children) walk(child, depth);
       return;
     }
+    const checkbox = node.completed ? '[x] ' : '[ ] ';
     const prefix = depth === 0 ? '- ' : '  '.repeat(depth) + '- ';
-    result += prefix + node.text + '\n';
+    result += prefix + checkbox + node.text + '\n';
     for (const child of node.children) walk(child, depth + 1);
   }
   walk(state.root, 0);
@@ -718,6 +721,111 @@ function downloadFile(content, filename, mimeType) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function parseMarkdown(text) {
+  const lines = text.split('\n');
+  const root = { id: state.nextId++, text: '', children: [], completed: false, collapsed: false };
+  const stack = [{ node: root, indent: -1 }];
+
+  for (const line of lines) {
+    const match = line.match(/^(\s*)([-*])\s+\[([x ])\]\s+(.*)/);
+    const simpleMatch = line.match(/^(\s*)([-*])\s+(.*)/);
+    
+    if (!match && !simpleMatch) continue;
+
+    const indent = match ? match[1].length / 2 : simpleMatch[1].length / 2;
+    const completed = match ? match[3].toLowerCase() === 'x' : false;
+    const text = match ? match[4] : simpleMatch[3];
+
+    while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+      stack.pop();
+    }
+
+    const newNode = { id: state.nextId++, text, children: [], completed, collapsed: false };
+    stack[stack.length - 1].node.children.push(newNode);
+    stack.push({ node: newNode, indent });
+  }
+
+  return root.children;
+}
+
+function parseJSON(text) {
+  try {
+    const data = JSON.parse(text);
+    function restoreIds(node) {
+      node.id = state.nextId++;
+      node.completed = node.completed || false;
+      node.collapsed = node.collapsed || false;
+      if (node.children) {
+        for (const child of node.children) {
+          restoreIds(child);
+        }
+      }
+      return node;
+    }
+    if (Array.isArray(data)) {
+      return data.map(restoreIds);
+    } else {
+      return [restoreIds(data)];
+    }
+  } catch (e) {
+    return [];
+  }
+}
+
+function parsePlainText(text) {
+  const lines = text.split('\n');
+  const root = { id: state.nextId++, text: '', children: [], completed: false, collapsed: false };
+  const stack = [{ node: root, indent: -1 }];
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    
+    const match = line.match(/^(\s*)~~(.+)~~$/);
+    const simpleMatch = line.match(/^(\s*)(.+)$/);
+    
+    if (!simpleMatch) continue;
+
+    const indentSpaces = simpleMatch[1].length;
+    const indent = Math.floor(indentSpaces / 2);
+    const completed = !!match;
+    const text = match ? match[2] : simpleMatch[2];
+
+    while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+      stack.pop();
+    }
+
+    const newNode = { id: state.nextId++, text, children: [], completed, collapsed: false };
+    stack[stack.length - 1].node.children.push(newNode);
+    stack.push({ node: newNode, indent });
+  }
+
+  return root.children;
+}
+
+function openImport() {
+  document.getElementById('import-overlay').classList.add('open');
+  document.getElementById('import-mode-select').style.display = 'block';
+  document.getElementById('import-file-input-section').style.display = 'none';
+  document.getElementById('import-node-select').style.display = 'none';
+}
+
+function closeImport() {
+  document.getElementById('import-overlay').classList.remove('open');
+}
+
+function showImportNodeSelect() {
+  const list = document.getElementById('import-node-list');
+  const visibleNodes = getVisibleNodes();
+  let html = '';
+  for (const n of visibleNodes) {
+    html += `<div class="import-node-item" data-id="${n.id}" tabindex="0">
+      <span class="import-node-text">${escapeHtml(n.text || 'untitled')}</span>
+    </div>`;
+  }
+  list.innerHTML = html;
+  document.getElementById('import-node-select').style.display = 'block';
 }
 
 function initCheatsheet() {
@@ -899,9 +1007,10 @@ function init() {
       e.preventDefault();
       saveCurrentText();
       const node = state.selectedId ? getNode(state.selectedId) : null;
-      const text = node ? node.text : '';
       if (state.selectedId === null) {
         createFirstNode('');
+      } else if (node && node.children.length > 0) {
+        addChild();
       } else {
         addSibling('');
       }
@@ -969,11 +1078,33 @@ function init() {
 
   searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
-      const firstResult = document.querySelector('.search-result');
-      if (firstResult) {
-        const id = parseInt(firstResult.dataset.id, 10);
-        closeSearch();
-        selectNode(id);
+      const focusedResult = document.querySelector('.search-result:focus');
+      if (focusedResult) {
+        const id = parseInt(focusedResult.dataset.id, 10);
+        const node = getNode(id);
+        if (node) {
+          const parent = findParent(id);
+          closeSearch();
+          if (parent && parent.id !== 0) {
+            focusOnNode(parent.id);
+          } else {
+            selectNode(id);
+          }
+        }
+      }
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const results = Array.from(document.querySelectorAll('.search-result'));
+      if (results.length === 0) return;
+      const focusedResult = document.querySelector('.search-result:focus');
+      if (!focusedResult) {
+        results[0].focus();
+      } else {
+        const currentIdx = results.indexOf(focusedResult);
+        const nextIdx = e.shiftKey ? (currentIdx - 1 + results.length) % results.length : (currentIdx + 1) % results.length;
+        results[nextIdx].focus();
       }
     }
     if (e.key === 'ArrowDown') {
@@ -1036,7 +1167,9 @@ function init() {
     if (!btn) return;
     const action = btn.dataset.action;
     menuDropdown.classList.remove('open');
-    if (action === 'toggle-hide-completed') {
+    if (action === 'global-search') {
+      openSearch();
+    } else if (action === 'toggle-hide-completed') {
       state.hideCompleted = !state.hideCompleted;
       updateMenuIcon(state.hideCompleted);
       render();
@@ -1070,7 +1203,9 @@ function init() {
     const btn = e.target.closest('.settings-btn');
     if (!btn) return;
     const action = btn.dataset.action;
-    if (action === 'export-text') {
+    if (action === 'import-file') {
+      openImport();
+    } else if (action === 'export-text') {
       downloadFile(exportPlainText(), 'jot-it-down.txt', 'text/plain');
     } else if (action === 'export-markdown') {
       downloadFile(exportMarkdown(), 'jot-it-down.md', 'text/markdown');
@@ -1080,6 +1215,145 @@ function init() {
   });
 
   settingsClose.addEventListener('click', closeSettings);
+
+  const importOverlay = document.getElementById('import-overlay');
+  const importFileInput = document.getElementById('import-file-input');
+  const importClose = document.getElementById('import-close');
+  let importMode = null;
+  let importedNodes = null;
+
+  importOverlay.addEventListener('click', (e) => {
+    if (e.target === importOverlay) {
+      closeImport();
+      return;
+    }
+
+    const modeBtn = e.target.closest('#import-mode-select button');
+    if (modeBtn) {
+      importMode = modeBtn.dataset.mode;
+      document.getElementById('import-mode-select').style.display = 'none';
+      document.getElementById('import-file-input-section').style.display = 'block';
+      importFileInput.click();
+      return;
+    }
+
+    const nodeItem = e.target.closest('.import-node-item');
+    if (nodeItem && importedNodes) {
+      const selectedId = parseInt(nodeItem.dataset.id, 10);
+      const targetNode = getNode(selectedId);
+      if (targetNode) {
+        targetNode.children.push(...importedNodes);
+        saveSnapshot();
+        render();
+        closeImport();
+        closeSettings();
+      }
+      return;
+    }
+  });
+
+  importFileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+      document.getElementById('import-mode-select').style.display = 'block';
+      document.getElementById('import-file-input-section').style.display = 'none';
+      return;
+    }
+
+    const text = await file.text();
+    const extension = file.name.split('.').pop().toLowerCase();
+
+    let nodes = [];
+    if (extension === 'json') {
+      nodes = parseJSON(text);
+    } else if (extension === 'md') {
+      nodes = parseMarkdown(text);
+    } else if (extension === 'txt') {
+      nodes = parsePlainText(text);
+    }
+
+    if (nodes.length === 0) {
+      alert('failed to parse file');
+      closeImport();
+      return;
+    }
+
+    if (importMode === 'replace') {
+      state.root.children = nodes;
+      setTimeout(() => {
+        saveSnapshot();
+        render();
+        closeImport();
+        closeSettings();
+      }, 5000);
+      alert('will replace in 5 seconds...');
+    } else {
+      importedNodes = nodes;
+      showImportNodeSelect();
+    }
+  });
+
+  importClose.addEventListener('click', closeImport);
+
+  outliner.addEventListener('paste', (e) => {
+    const el = e.target;
+    if (!el || !el.classList.contains('node-text')) return;
+
+    const text = e.clipboardData.getData('text/plain');
+    const lines = text.split('\n').filter(line => line !== '');
+
+    if (lines.length <= 1) {
+      return;
+    }
+
+    e.preventDefault();
+    saveCurrentText();
+    if (state.selectedId === null) {
+      for (let i = 0; i < lines.length; i++) {
+        if (i === 0) {
+          createFirstNode(lines[i]);
+        } else {
+          addSibling(lines[i]);
+        }
+      }
+      return;
+    }
+
+    const node = getNode(state.selectedId);
+    if (!node) return;
+
+    const currentText = el.textContent || '';
+    const sel = window.getSelection();
+    const cursorPos = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).startOffset : 0;
+
+    const beforeText = currentText.slice(0, cursorPos);
+    const afterText = currentText.slice(cursorPos);
+
+    node.text = beforeText + lines[0];
+
+    for (let i = 1; i < lines.length; i++) {
+      const newText = i === lines.length - 1 ? lines[i] + afterText : lines[i];
+      addSibling(newText);
+    }
+
+    saveSnapshot();
+    render();
+  }, true);
+
+  outliner.addEventListener('cut', (e) => {
+    const el = e.target;
+    if (!el || !el.classList.contains('node-text')) return;
+    setTimeout(() => {
+      saveCurrentText();
+      schedulePersist();
+    }, 0);
+  }, true);
+
+  outliner.addEventListener('copy', (e) => {
+    const el = e.target;
+    if (!el || !el.classList.contains('node-text')) return;
+    saveCurrentText();
+  }, true);
 
   document.addEventListener('input', (e) => {
     const el = e.target;

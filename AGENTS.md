@@ -11,3 +11,4 @@
 11. Keep most padding, margins and all things multiples of 4px or 5px
 12. Keep it minimal
 13. Don't use emojis unless asked
+14. Try to use lowercase everytime (not block capitals)

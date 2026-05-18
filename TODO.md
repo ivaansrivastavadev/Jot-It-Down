@@ -1,9 +1,16 @@
-- [x] --BUG-- Version history showing wrong number of nodes in previous numbers
+- [ ] In Global search if pressing Tab, it should highlight the first entry and Shift+Tab to the upper/last and if clicked and enter pressed, it should highlight the entry and focus its parent not create a new node
+- [ ] ==BUG== Ctrl + X dosen't work
+
+- [x] Add import for TXT, JSON and MD with two options asked to the user: Replace root node (Has a 5 Second wait) and Append to an existing node and lets the user choose the node
+- [x] Add Global search entry to triple dot menu
+- [x] Fix pasting multiple lines: if multiple lines are pasted, siblings should be created
+- [x] ==BUG== When pressing enter on a node which has children, the node it gets added after all the children, make it, make it if pressing enter on a parent, a new child of that parent is to be created
+- [x] ==BUG== Version history showing wrong number of nodes in previous numbers
 - [x] Change favicon to assets/icon.svg
 - [x] After deleting a node, the cursor should move at the end of the upper node text
-- [x] --BUG-- When deleting a parent which has less child nodes but the child nodes also have nested nodes which add up to more than 5, the modal dosent show up
-- [x] --BUG-- When using backspace to delete node, cursor teleports not to the upper node but at the parent. Fix
-- [x] --BUG-- Ctrl + Shift + Backspace should also delete the node not just remove the text
+- [x] ==BUG== When deleting a parent which has less child nodes but the child nodes also have nested nodes which add up to more than 5, the modal dosent show up
+- [x] ==BUG== When using backspace to delete node, cursor teleports not to the upper node but at the parent. Fix
+- [x] ==BUG== Ctrl + Shift + Backspace should also delete the node not just remove the text
 - [x] If deleting a parent which has more than 5 nodes, ask for a warning, the modal keyboard shortcuts: y/enter/delete: delete, n/backspace: close modal and not delete parent 
 - [x] Add a close button just like in settings to the cheat sheet
 - [x] Revert the toggle size
@@ -11,11 +18,11 @@
 - [x] Make the tittle centered in the top bar
 - [x] Move Hide completed onto triple dot menu
 - [x] In triple dot menu make settings button with icon
-- [x] --VBUG-- Make it when theres a lot of content for the top bar, add ... to the start and short it from the start
-- [x] --BUG-- When directly focusing a node which has a parent, the parent is not shown in the top bar (If using keyboard shortcuts) i suggest a single function that runs on the keyboard shortcuts and button press that opens the focus view
+- [x] ==VBUG== Make it when theres a lot of content for the top bar, add ... to the start and short it from the start
+- [x] ==BUG== When directly focusing a node which has a parent, the parent is not shown in the top bar (If using keyboard shortcuts) i suggest a single function that runs on the keyboard shortcuts and button press that opens the focus view
 - [x] Clicking on the node bullet focuses it to the focus that happens on Ctrl + ]
 - [x] Make the font bigger
-- [x] --BUG-- Clicking on the text in any node does not move the cursor to there, it moves it to the start of the node 
+- [x] ==BUG== Clicking on the text in any node does not move the cursor to there, it moves it to the start of the node 
 - [x] Move export to triple dot menu
 - [x] Add styling for checkboxes
 - [x] Fix indentation

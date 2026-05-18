@@ -264,6 +264,13 @@ body {
   background: #1c1a16;
 }
 
+.search-result:focus {
+  outline: none;
+  background: #222018;
+  border-left: 2px solid #c4a820;
+  padding-left: 6px;
+}
+
 .search-result .sr-depth {
   color: #4a4840;
   font-size: 11px;
@@ -733,5 +740,139 @@ body {
   background: #2e2b22;
   border-radius: 3px;
 }
+
+#import-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(26, 26, 26, 0.97);
+  z-index: 160;
+  align-items: center;
+  justify-content: center;
+}
+
+#import-overlay.open {
+  display: flex;
+}
+
+#import-content {
+  max-width: 400px;
+  width: 100%;
+  padding: 32px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#import-content h1 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #c4a820;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+#import-body {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+#import-mode-select {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#import-mode-select button {
+  background: #1c1a16;
+  border: 1px solid #2e2b22;
+  border-radius: 6px;
+  color: #d4d0c4;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+#import-mode-select button:hover {
+  background: #222018;
+  border-color: #3d3924;
+}
+
+#import-file-input {
+  display: none;
+}
+
+#import-node-list {
+  border: 1px solid #2e2b22;
+  border-radius: 6px;
+  overflow: hidden;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.import-node-item {
+  padding: 10px 16px;
+  border-bottom: 1px solid #2e2b22;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.import-node-item:last-child {
+  border-bottom: none;
+}
+
+.import-node-item:hover {
+  background: #1c1a16;
+}
+
+.import-node-item:focus {
+  outline: none;
+  background: #222018;
+  border-left: 2px solid #c4a820;
+  padding-left: 14px;
+}
+
+.import-node-text {
+  color: #d4d0c4;
+  font-size: 11px;
+}
+
+#import-close {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #7a7668;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+#import-close:hover {
+  color: #d4d0c4;
+  background: #1c1a16;
+}
+
+#import-node-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+#import-node-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#import-node-list::-webkit-scrollbar-thumb {
+  background: #2e2b22;
+  border-radius: 3px;
+}
+
 
 

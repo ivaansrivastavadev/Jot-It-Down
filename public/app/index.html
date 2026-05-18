@@ -19,6 +19,11 @@
                     <div id="menu-wrapper">
                         <button id="menu-btn">&#8942;</button>
                         <div id="menu-dropdown">
+                            <button data-action="global-search">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                global search
+                            </button>
+                            <hr class="menu-sep" />
                             <button data-action="toggle-hide-completed">
                                 <span class="menu-icon">&#10003;</span> hide
                                 completed
@@ -84,22 +89,55 @@
                 <h1>settings</h1>
                 <div id="settings-body">
                     <div class="settings-section">
+                        <div class="settings-section-title">import</div>
+                        <button class="settings-btn" data-action="import-file">
+                            import file
+                        </button>
+                    </div>
+                    <div class="settings-section">
                         <div class="settings-section-title">export</div>
                         <button class="settings-btn" data-action="export-text">
-                            export plain text
+                            export plain text (best for humans)
                         </button>
                         <button
                             class="settings-btn"
                             data-action="export-markdown"
                         >
-                            export markdown
+                            export markdown (best for TODOs)
                         </button>
                         <button class="settings-btn" data-action="export-json">
-                            export json
+                            export json (best for import/export)
                         </button>
                     </div>
                 </div>
                 <button id="settings-close">close</button>
+            </div>
+        </div>
+
+        <div id="import-overlay">
+            <div id="import-content">
+                <h1>import</h1>
+                <div id="import-body">
+                    <div id="import-mode-select">
+                        <button id="import-replace" data-mode="replace">
+                            replace root node
+                        </button>
+                        <button id="import-append" data-mode="append">
+                            append to existing node
+                        </button>
+                    </div>
+                    <div id="import-file-input-section" style="display: none">
+                        <input
+                            type="file"
+                            id="import-file-input"
+                            accept=".txt,.json,.md"
+                        />
+                    </div>
+                    <div id="import-node-select" style="display: none">
+                        <div id="import-node-list"></div>
+                    </div>
+                </div>
+                <button id="import-close">close</button>
             </div>
         </div>
 
