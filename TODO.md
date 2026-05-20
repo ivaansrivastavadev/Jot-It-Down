@@ -1,6 +1,8 @@
-- [ ] In Global search if pressing Tab, it should highlight the first entry and Shift+Tab to the upper/last and if clicked and enter pressed, it should highlight the entry and focus its parent not create a new node
-- [ ] ==BUG== Ctrl + X dosen't work
-
+- [x] For ultra-large notes in jot-it-down either add lazy-loading or do anything so the browser dosen't eat memory
+- [x] In settings add option: no keyboard mode the dropdown options are auto (auto-detects), yes, no: if yes selected then show a small bar at the bottom of the screen. Buttons include Undo/Redo, Indent/Unindent Focus in/Focus Out. needed for mobile
+- [x] Add new options in triple-dot-menu: Collapse all & Expand all
+- [x] In Global search if pressing Tab, it should highlight the first entry and Shift+Tab to the upper/last and if clicked and enter pressed, it should highlight the entry and focus its parent not create a new node
+- [x] ==BUG== Ctrl + X dosen't work
 - [x] Add import for TXT, JSON and MD with two options asked to the user: Replace root node (Has a 5 Second wait) and Append to an existing node and lets the user choose the node
 - [x] Add Global search entry to triple dot menu
 - [x] Fix pasting multiple lines: if multiple lines are pasted, siblings should be created

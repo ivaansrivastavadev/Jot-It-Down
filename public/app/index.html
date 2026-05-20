@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Jot-It-Down</title>
+        <title>App - Jot It Down</title>
         <link rel="icon" type="image/svg+xml" href="/assets/icon.svg" />
         <link rel="stylesheet" href="styles.css" />
         <link
@@ -27,19 +27,48 @@
                             <button data-action="toggle-hide-completed">
                                 <span class="menu-icon">&#10003;</span> hide
                                 completed
-                            </button>
-                            <hr class="menu-sep" />
-                            <button data-action="settings">
-                                <i class="fa-solid fa-gear"></i> settings
-                            </button>
-                            <button data-action="version-history">
-                                version history
-                            </button>
+                             </button>
+                             <hr class="menu-sep" />
+                             <button data-action="collapse-all">
+                                 <i class="fa-solid fa-compress"></i> collapse all
+                             </button>
+                             <button data-action="expand-all">
+                                 <i class="fa-solid fa-expand"></i> expand all
+                             </button>
+                             <hr class="menu-sep" />
+                             <button data-action="settings">
+                                 <i class="fa-solid fa-gear"></i> settings
+                             </button>
+                             <button data-action="version-history">
+                                 version history
+                             </button>
                         </div>
                     </div>
                 </div>
+             </div>
+             <div id="outliner"></div>
+            <div id="action-bar">
+                <button class="action-btn" data-action="undo" title="undo">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+                <button class="action-btn" data-action="redo" title="redo">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+                <div class="action-sep"></div>
+                <button class="action-btn" data-action="indent" title="indent">
+                    <i class="fa-solid fa-indent"></i>
+                </button>
+                <button class="action-btn" data-action="unindent" title="unindent">
+                    <i class="fa-solid fa-outdent"></i>
+                </button>
+                <div class="action-sep"></div>
+                <button class="action-btn" data-action="focus-in" title="focus in">
+                    <i class="fa-solid fa-magnifying-glass-plus"></i>
+                </button>
+                <button class="action-btn" data-action="focus-out" title="focus out">
+                    <i class="fa-solid fa-magnifying-glass-minus"></i>
+                </button>
             </div>
-            <div id="outliner"></div>
         </div>
 
         <div id="search-overlay">
@@ -88,6 +117,14 @@
             <div id="settings-content">
                 <h1>settings</h1>
                 <div id="settings-body">
+                    <div class="settings-section">
+                        <div class="settings-section-title">input mode</div>
+                        <select id="no-keyboard-mode">
+                            <option value="auto">auto-detect</option>
+                            <option value="yes">touch mode (always on)</option>
+                            <option value="no">keyboard mode (always off)</option>
+                        </select>
+                    </div>
                     <div class="settings-section">
                         <div class="settings-section-title">import</div>
                         <button class="settings-btn" data-action="import-file">
@@ -138,10 +175,10 @@
                     </div>
                 </div>
                 <button id="import-close">close</button>
-            </div>
-        </div>
+             </div>
+         </div>
 
-        <script src="db.js"></script>
-        <script src="script.js"></script>
-    </body>
-</html>
+         <script src="db.js"></script>
+         <script src="script.js"></script>
+     </body>
+ </html>

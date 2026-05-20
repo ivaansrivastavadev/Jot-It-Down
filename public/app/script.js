@@ -13,17 +13,19 @@ const state = {
   isVersionOpen: false,
   hideCompleted: false,
   tagFilter: null,
+  noKeyboardMode: 'auto',
 };
 
 let autosaveTimer = null;
 let pendingDeleteId = null;
+let renderScheduled = false;
 
 const KEYBINDS = [
   ['enter', 'new sibling'],
   ['tab', 'indent'],
   ['shift+tab', 'outdent'],
   ['ctrl+z', 'undo'],
-  ['ctrl+x', 'redo'],
+  ['ctrl+shift+z', 'redo'],
   ['ctrl+k', 'open search'],
   ['ctrl+l', 'toggle complete'],
   ['ctrl+]', 'zoom into node'],
@@ -114,6 +116,7 @@ function persistState() {
     focusIds: [...state.focusIds],
     hideCompleted: state.hideCompleted,
     tagFilter: state.tagFilter,
+    noKeyboardMode: state.noKeyboardMode,
   };
   saveCurrent(data);
 }
@@ -124,6 +127,38 @@ function schedulePersist() {
     persistState();
     autosaveTimer = null;
   }, 1000);
+}
+
+function isTouchDeviceDetected() {
+  return (
+    (typeof window !== 'undefined' && 'ontouchstart' in window) ||
+    (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) ||
+    (typeof navigator !== 'undefined' && navigator.msMaxTouchPoints > 0)
+  );
+}
+
+function shouldShowActionBar() {
+  if (state.noKeyboardMode === 'yes') return true;
+  if (state.noKeyboardMode === 'no') return false;
+  return isTouchDeviceDetected();
+}
+
+function updateActionBar() {
+  const actionBar = document.getElementById('action-bar');
+  if (shouldShowActionBar()) {
+    actionBar.classList.add('open');
+  } else {
+    actionBar.classList.remove('open');
+  }
+}
+
+function updateActionBar() {
+  const actionBar = document.getElementById('action-bar');
+  if (shouldShowActionBar()) {
+    actionBar.classList.add('open');
+  } else {
+    actionBar.classList.remove('open');
+  }
 }
 
 function openVersionHistory() {
@@ -270,7 +305,16 @@ function selectNode(id, offset) {
   saveCurrentText();
   state.selectedId = id;
   state.cursorOffset = offset !== undefined ? offset : 0;
-  render();
+   render();
+}
+
+function scheduleRender() {
+  if (renderScheduled) return;
+  renderScheduled = true;
+  requestAnimationFrame(() => {
+    render();
+    renderScheduled = false;
+  });
 }
 
 function render() {
@@ -513,6 +557,32 @@ function toggleCollapse(id) {
   const node = getNode(id);
   if (!node || node.children.length === 0) return;
   node.collapsed = !node.collapsed;
+  saveSnapshot();
+  render();
+}
+
+function collapseAll() {
+  function walk(node) {
+    if (node.children.length > 0) {
+      node.collapsed = true;
+    }
+    for (const child of node.children) {
+      walk(child);
+    }
+  }
+  walk(state.root);
+  saveSnapshot();
+  render();
+}
+
+function expandAll() {
+  function walk(node) {
+    node.collapsed = false;
+    for (const child of node.children) {
+      walk(child);
+    }
+  }
+  walk(state.root);
   saveSnapshot();
   render();
 }
@@ -861,10 +931,13 @@ function init() {
       state.focusIds = saved.focusIds || [];
       state.hideCompleted = saved.hideCompleted || false;
       state.tagFilter = saved.tagFilter || null;
+      state.noKeyboardMode = saved.noKeyboardMode || 'auto';
     }
   }).finally(() => {
     render();
     updateMenuIcon(state.hideCompleted);
+    updateActionBar();
+    document.getElementById('no-keyboard-mode').value = state.noKeyboardMode;
   });
 
   setInterval(() => {
@@ -922,7 +995,7 @@ function init() {
     if (node && node.children.length > 0) {
       toggleCollapse(id);
     }
-  });
+   });
 
   document.addEventListener('keydown', (e) => {
     if (state.isSearchOpen) {
@@ -967,9 +1040,60 @@ function init() {
       return;
     }
 
-    if (ctrl && e.key === 'x') {
+    if (ctrl && e.shiftKey && e.key === 'z') {
       e.preventDefault();
       redo();
+      return;
+    }
+
+    if (ctrl && e.key === 'v') {
+      e.preventDefault();
+      if (state.selectedId !== null) {
+        const el = document.querySelector(`[data-id="${state.selectedId}"] .node-text`);
+        if (el && el.contentEditable === 'true') {
+          navigator.clipboard.readText().then(text => {
+            const lines = text.split('\n').filter(line => line !== '');
+            
+            if (lines.length <= 1) {
+              const sel = window.getSelection();
+              if (sel && sel.rangeCount > 0) {
+                const range = sel.getRangeAt(0);
+                range.deleteContents();
+                const textNode = document.createTextNode(text);
+                range.insertNode(textNode);
+                range.setStartAfter(textNode);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+              }
+              return;
+            }
+            
+            saveCurrentText();
+            const node = getNode(state.selectedId);
+            if (!node) return;
+
+            const currentText = el.textContent || '';
+            const sel = window.getSelection();
+            const cursorPos = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).startOffset : 0;
+
+            const beforeText = currentText.slice(0, cursorPos);
+            const afterText = currentText.slice(cursorPos);
+
+            node.text = beforeText + lines[0];
+
+            for (let i = 1; i < lines.length; i++) {
+              const newText = i === lines.length - 1 ? lines[i] + afterText : lines[i];
+              addSibling(newText);
+            }
+
+            saveSnapshot();
+            render();
+          }).catch(() => {
+            // Fallback if clipboard API fails
+          });
+        }
+      }
       return;
     }
 
@@ -1078,6 +1202,7 @@ function init() {
 
   searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       const focusedResult = document.querySelector('.search-result:focus');
       if (focusedResult) {
         const id = parseInt(focusedResult.dataset.id, 10);
@@ -1106,6 +1231,7 @@ function init() {
         const nextIdx = e.shiftKey ? (currentIdx - 1 + results.length) % results.length : (currentIdx + 1) % results.length;
         results[nextIdx].focus();
       }
+      return;
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -1162,25 +1288,31 @@ function init() {
     }
   });
 
-  menuDropdown.addEventListener('click', (e) => {
-    const btn = e.target.closest('button');
-    if (!btn) return;
-    const action = btn.dataset.action;
-    menuDropdown.classList.remove('open');
-    if (action === 'global-search') {
-      openSearch();
-    } else if (action === 'toggle-hide-completed') {
-      state.hideCompleted = !state.hideCompleted;
-      updateMenuIcon(state.hideCompleted);
-      render();
-      if (state.selectedId !== null) restoreFocus();
-      schedulePersist();
-    } else if (action === 'settings') {
-      openSettings();
-    } else if (action === 'version-history') {
-      openVersionHistory();
-    }
-  });
+   menuDropdown.addEventListener('click', (e) => {
+     const btn = e.target.closest('button');
+     if (!btn) return;
+     const action = btn.dataset.action;
+     menuDropdown.classList.remove('open');
+     if (action === 'global-search') {
+       openSearch();
+     } else if (action === 'toggle-hide-completed') {
+       state.hideCompleted = !state.hideCompleted;
+       updateMenuIcon(state.hideCompleted);
+       render();
+       if (state.selectedId !== null) restoreFocus();
+       schedulePersist();
+      } else if (action === 'collapse-all') {
+         collapseAll();
+         schedulePersist();
+       } else if (action === 'expand-all') {
+         expandAll();
+         schedulePersist();
+       } else if (action === 'settings') {
+         openSettings();
+       } else if (action === 'version-history') {
+         openVersionHistory();
+       }
+   });
 
   versionOverlay.addEventListener('click', (e) => {
     if (e.target === versionOverlay) {
@@ -1215,6 +1347,40 @@ function init() {
   });
 
   settingsClose.addEventListener('click', closeSettings);
+
+  document.getElementById('no-keyboard-mode').addEventListener('change', (e) => {
+    state.noKeyboardMode = e.target.value;
+    updateActionBar();
+    schedulePersist();
+  });
+
+  const actionBar = document.getElementById('action-bar');
+  actionBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.action-btn');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    
+    switch (action) {
+      case 'undo':
+        undo();
+        break;
+      case 'redo':
+        redo();
+        break;
+      case 'indent':
+        indentNode();
+        break;
+      case 'unindent':
+        outdentNode();
+        break;
+      case 'focus-in':
+        zoomIn();
+        break;
+      case 'focus-out':
+        zoomOut();
+        break;
+    }
+  });
 
   const importOverlay = document.getElementById('import-overlay');
   const importFileInput = document.getElementById('import-file-input');
@@ -1371,8 +1537,8 @@ function init() {
           schedulePersist();
         }
       }
-    }
-  }, true);
+     }
+    }, true);
 }
 
 document.addEventListener('DOMContentLoaded', init);
