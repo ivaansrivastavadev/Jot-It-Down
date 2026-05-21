@@ -1,0 +1,25 @@
+{
+  "name": "jot-it-down",
+  "version": "1.0.0",
+  "description": "Ultra-minimal Workflowy/Dynalist-style bullet note application with Material You dark theme",
+  "scripts": {
+    "dev": "npx serve public",
+    "build": "echo 'No build step required for static HTML'",
+    "test": "echo 'No tests configured'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ivaansrivastavadev/Jot-It-Down"
+  },
+  "keywords": [
+    "notes",
+    "outliner",
+    "bullet-list",
+    "note-taking"
+  ],
+  "author": "ivaansrivastavadev",
+  "license": "MIT",
+  "dependencies": {
+    "@vercel/analytics": "^1.4.1"
+  }
+}
