@@ -184,5 +184,9 @@
              import { inject } from '/node_modules/@vercel/analytics/dist/index.mjs';
              inject();
          </script>
+         <script type="module">
+             import { injectSpeedInsights } from '/node_modules/@vercel/speed-insights/dist/index.mjs';
+             injectSpeedInsights();
+         </script>
      </body>
  </html>
