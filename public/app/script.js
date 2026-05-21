@@ -152,15 +152,6 @@ function updateActionBar() {
   }
 }
 
-function updateActionBar() {
-  const actionBar = document.getElementById('action-bar');
-  if (shouldShowActionBar()) {
-    actionBar.classList.add('open');
-  } else {
-    actionBar.classList.remove('open');
-  }
-}
-
 function openVersionHistory() {
   state.isVersionOpen = true;
   document.getElementById('version-overlay').classList.add('open');
@@ -1539,6 +1530,25 @@ function init() {
       }
      }
     }, true);
+
+  /* mobile keyboard handling */
+  if (typeof visualViewport !== 'undefined') {
+    visualViewport.addEventListener('resize', () => {
+      const app = document.getElementById('app');
+      if (app) {
+        app.style.height = window.innerHeight + 'px';
+      }
+    });
+  }
+
+  /* prevent topbar/action-bar from being hidden by mobile keyboard */
+  document.addEventListener('focusin', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      setTimeout(() => {
+        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, true);
 }
 
 document.addEventListener('DOMContentLoaded', init);

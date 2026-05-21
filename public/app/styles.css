@@ -7,6 +7,10 @@
 html, body {
   height: 100%;
   overflow: hidden;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  left: 0;
 }
 
 body {
@@ -22,6 +26,7 @@ body {
   max-width: 800px;
   margin: 0 auto;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -955,4 +960,75 @@ body {
   color: #d4d0c4;
 }
 
+/* mobile support */
+@media (max-width: 480px) {
+  #app {
+    height: 100dvh;
+  }
+
+  body {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
+
+  html {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
+
+  #topbar {
+    padding: 8px 12px;
+    min-height: 40px;
+  }
+
+  #action-bar {
+    min-height: 48px;
+    padding: 12px 4px;
+  }
+
+  #outliner {
+    padding: 4px 0;
+  }
+
+  .node {
+    padding: 4px 12px;
+  }
+
+  #search-overlay {
+    padding: 16px 16px;
+  }
+
+  .search-result {
+    padding: 8px 6px;
+  }
+
+  #cheatsheet-content,
+  #version-content,
+  #confirm-content,
+  #settings-content,
+  #import-content {
+    padding: 24px 16px;
+    max-width: calc(100vw - 32px);
+  }
+}
+
+/* prevent ios rubber band effect */
+html, body {
+  touch-action: none;
+}
+
+#outliner {
+  touch-action: pan-y;
+}
+
+/* ensure action bar stays at bottom on mobile */
+@supports (height: 100dvh) {
+  @media (max-height: 500px) {
+    #app {
+      height: 100dvh;
+    }
+  }
+}
 
