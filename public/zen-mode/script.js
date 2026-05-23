@@ -1,6 +1,3 @@
-    // Add select text button to nav
-    document.querySelector('nav').appendChild(document.getElementById('selectTextBtn'));
-
     // Show popup with all editor text
     document.getElementById('selectTextBtn').onclick = function() {
       document.getElementById('editorTextDump').value = buffer.join('\n');
@@ -18,15 +15,8 @@
     };
 
     // Download code button
-    const downloadBtn = document.createElement('button');
-    downloadBtn.id = 'downloadBtn';
-    downloadBtn.title = 'Download Code';
-    downloadBtn.style = 'background:none;border:none;color:#fff;font-size:20px;cursor:pointer;margin:0 10px;';
-    downloadBtn.textContent = '⬇️';
-    document.querySelector('nav').appendChild(downloadBtn);
-
-    downloadBtn.onclick = () => {
-      let filename = prompt('Enter filename to download:', 'code.txt');
+    document.getElementById('downloadBtn').onclick = () => {
+      let filename = prompt('filename:', 'code.txt');
       if (!filename) return;
       const blob = new Blob([buffer.join('\n')], {type: 'text/plain'});
       const a = document.createElement('a');
@@ -51,7 +41,8 @@
 
     // Show keyboard button logic
     document.getElementById('showKeyboardBtn').onclick = () => {
-      showMobileKeyboard();
+      const cmdInput = document.querySelector('#cmdPalette input');
+      if (cmdInput) cmdInput.focus();
     };
 
     const cv = document.getElementById('cv');
@@ -67,10 +58,6 @@
     let visualCursorY = 0;
     let visualOffsetX = 0;
     let visualOffsetY = 0;
-
-    // Glow settings
-    let glowBlur = 8;
-    let glowColor = '#00f0ff';
 
     function resize() {
       cv.width = window.innerWidth;
@@ -130,10 +117,11 @@
         toggleSettings();
         return;
       }
-      // Show mobile keyboard
+       // Show mobile keyboard
       if (e.ctrlKey && e.key === 'k') {
         e.preventDefault();
-        showMobileKeyboard();
+        const cmdInput = document.querySelector('#cmdPalette input');
+        if (cmdInput) cmdInput.focus();
         return;
       }
       if (cmdPalette && cmdPalette.style.display === 'block') return;
@@ -243,68 +231,6 @@
       await w.close();
     }
 
-    // Add glow effect to text rendering
-    function drawTextWithGlow(ctx, text, x, y, color = '#fff', glowColor = '#fff', glowBlur = 8) {
-      ctx.save();
-      ctx.shadowColor = '#fff';
-      ctx.shadowBlur = glowBlur;
-      ctx.fillStyle = color;
-      ctx.fillText(text, x, y);
-      ctx.restore();
-    }
-
-    // Add glow settings to settings modal if not present
-    function addGlowSettings() {
-      const settings = document.getElementById('settingsModal');
-      if (!settings || document.getElementById('glowBlurSlider')) return;
-
-      const glowDiv = document.createElement('div');
-      glowDiv.style.marginTop = '1em';
-
-      // Blur slider
-      const blurLabel = document.createElement('label');
-      blurLabel.textContent = 'Glow Blur: ';
-      const blurSlider = document.createElement('input');
-      blurSlider.type = 'range';
-      blurSlider.min = 0;
-      blurSlider.max = 32;
-      blurSlider.value = glowBlur;
-      blurSlider.id = 'glowBlurSlider';
-      blurSlider.style.verticalAlign = 'middle';
-      const blurValue = document.createElement('span');
-      blurValue.textContent = glowBlur;
-      blurSlider.oninput = function() {
-        glowBlur = parseInt(this.value, 10);
-        blurValue.textContent = glowBlur;
-      };
-
-      blurLabel.appendChild(blurSlider);
-      blurLabel.appendChild(blurValue);
-      glowDiv.appendChild(blurLabel);
-
-      // Color picker
-      const colorLabel = document.createElement('label');
-      colorLabel.textContent = ' Glow Color: ';
-      const colorInput = document.createElement('input');
-      colorInput.type = 'color';
-      colorInput.value = glowColor;
-      colorInput.id = 'glowColorInput';
-      colorInput.oninput = function() {
-        glowColor = this.value;
-      };
-      colorLabel.appendChild(colorInput);
-      glowDiv.appendChild(colorLabel);
-
-      settings.appendChild(glowDiv);
-    }
-
-    // Patch toggleSettings to add glow settings
-    const origToggleSettings = window.toggleSettings;
-    window.toggleSettings = function() {
-      origToggleSettings && origToggleSettings();
-      addGlowSettings();
-    };
-
     function draw() {
       requestAnimationFrame(draw);
 
@@ -330,18 +256,20 @@
       visualOffsetX += (offsetXTarget - visualOffsetX) * ease;
       visualOffsetY += (offsetYTarget - visualOffsetY) * ease;
 
-      ctx.fillStyle = '#1a1b22';
+      ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(0, 0, cv.width, cv.height);
 
       for (let y = 0; y < buffer.length; y++) {
         const lineY = visualOffsetY + (y - scrollStart) * lineHeight;
         if (lineY < -lineHeight || lineY > cv.height) continue;
 
-        // Glow for line numbers
-        drawTextWithGlow(ctx, (y + 1).toString().padStart(3, ' '), visualOffsetX - gutterWidth + 5, lineY, '#444', glowColor, 6);
+        // Line numbers
+        ctx.fillStyle = '#444';
+        ctx.fillText((y + 1).toString().padStart(3, ' '), visualOffsetX - gutterWidth + 5, lineY);
 
-        // Glow for code text
-        drawTextWithGlow(ctx, buffer[y], visualOffsetX, lineY, selecting ? '#0f0' : '#ddd', glowColor, glowBlur);
+        // Code text
+        ctx.fillStyle = selecting ? '#0f0' : '#ddd';
+        ctx.fillText(buffer[y], visualOffsetX, lineY);
       }
 
       ctx.save();
@@ -354,74 +282,46 @@
 
     draw();
 
-    // Ensure the keyboard button works on mobile by focusing an input or showing a keyboard popup
+    // Ensure the keyboard button works on mobile
     document.getElementById('showKeyboardBtn').addEventListener('click', function() {
-      // Try to focus the command palette input to trigger the keyboard
       var cmdInput = document.querySelector('#cmdPalette input');
       if (cmdInput) {
         cmdInput.focus();
       }
     });
-    /* Patch drawTextWithGlow to not use glow for line numbers */
-    const origDrawTextWithGlow = drawTextWithGlow;
-    drawTextWithGlow = function(ctx, text, x, y, color = '#fff', glowColor = '#fff', glowBlur = 8, noGlow = false) {
-      if (noGlow) {
-        ctx.save();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = color;
-        ctx.fillText(text, x, y);
-        ctx.restore();
-      } else {
-        origDrawTextWithGlow(ctx, text, x, y, color, glowColor, glowBlur);
+
+    // Settings modal
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+    const zoomSlider = document.getElementById('zoomSlider');
+    const zoomValue = document.getElementById('zoomValue');
+
+    settingsBtn.addEventListener('click', () => {
+      settingsModal.style.display = 'block';
+    });
+
+    closeSettingsBtn.addEventListener('click', () => {
+      settingsModal.style.display = 'none';
+    });
+
+    zoomSlider.addEventListener('input', function() {
+      zoomValue.textContent = zoomSlider.value + '%';
+      const scale = zoomSlider.value / 100;
+      cv.style.position = 'absolute';
+      cv.style.top = '50%';
+      cv.style.left = '50%';
+      cv.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    });
+
+    // Close settings when clicking outside
+    settingsModal.addEventListener('click', (e) => {
+      if (e.target === settingsModal) {
+        settingsModal.style.display = 'none';
       }
+    });
+
+    // Toggle settings function
+    window.toggleSettings = function() {
+      settingsModal.style.display = settingsModal.style.display === 'block' ? 'none' : 'block';
     };
-
-    /* Patch draw to use noGlow for line numbers */
-    const origDraw = draw;
-    draw = function() {
-      requestAnimationFrame(draw);
-
-      ctx.font = `${ch}px monospace`;
-      ctx.textBaseline = "top";
-
-      const beforeCursor = buffer[cy].slice(0, cx);
-      const cursorXRaw = ctx.measureText(beforeCursor).width;
-
-      const lineHeight = ch;
-      const gutterWidth = 40;
-      const visibleLines = Math.floor(cv.height / lineHeight);
-      const scrollStart = Math.max(0, cy - Math.floor(visibleLines / 2));
-      const offsetYTarget = (cv.height / 2) - (cy - scrollStart) * lineHeight;
-      const offsetXTarget = (cv.width / 2) - cursorXRaw;
-
-      const cursorXTarget = visualOffsetX + cursorXRaw;
-      const cursorYTarget = visualOffsetY + (cy - scrollStart) * lineHeight;
-
-      const ease = 0.2;
-      visualCursorX += (cursorXTarget - visualCursorX) * ease;
-      visualCursorY += (cursorYTarget - visualCursorY) * ease;
-      visualOffsetX += (offsetXTarget - visualOffsetX) * ease;
-      visualOffsetY += (offsetYTarget - visualOffsetY) * ease;
-
-      ctx.fillStyle = '#1a1b22';
-      ctx.fillRect(0, 0, cv.width, cv.height);
-
-      for (let y = 0; y < buffer.length; y++) {
-        const lineY = visualOffsetY + (y - scrollStart) * lineHeight;
-        if (lineY < -lineHeight || lineY > cv.height) continue;
-
-        // No glow for line numbers
-        drawTextWithGlow(ctx, (y + 1).toString().padStart(3, ' '), visualOffsetX - gutterWidth + 5, lineY, '#444', glowColor, 6, true);
-
-        // Glow for code text
-        drawTextWithGlow(ctx, buffer[y], visualOffsetX, lineY, selecting ? '#0f0' : '#ddd', glowColor, glowBlur);
-      }
-
-      ctx.save();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.fillRect(visualCursorX, visualCursorY, 2, lineHeight);
-      ctx.restore();
-
-      selecting = false;
-    };
-    draw();

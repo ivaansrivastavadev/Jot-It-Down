@@ -2,102 +2,46 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ZenCodeEdit</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>zen mode</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <canvas id="cv"></canvas>
-  <nav style="position:fixed;top:0;left:0;width:100%;height:40px;background:#222;display:flex;align-items:center;z-index:20;box-shadow:0 2px 8px #0006;">
-    <button id="openFileBtn" title="Open File" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;margin:0 10px;">
-      📁
-    </button>
-
-    <button id="showKeyboardBtn" title="Show Keyboard" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;margin:0 10px;">
-      ⌨️
-    </button>
-    <button onclick="toggleCommandPalette()" title="Toggle Command Palette" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;margin:0 10px;">
-      🧭
-    </button>
-    <button onclick="window.location.href='about.html'" title="About" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;margin:0 10px;">
-      ℹ️
-        </button>
-        <button id="settingsBtn" title="Settings" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;margin:0 10px;">
-      ⚙️
-        </button>
-    </button>
+  
+  <nav>
+    <button id="openFileBtn" title="open file">↑</button>
+    <button id="showKeyboardBtn" title="show keyboard">⌨</button>
+    <button id="cmdBtn" onclick="toggleCommandPalette()" title="commands">?</button>
+    <button id="selectTextBtn" title="show all text">≡</button>
+    <button id="downloadBtn" title="download">↓</button>
+    <button id="settingsBtn" title="settings">⚙</button>
   </nav>
+
   <input type="file" id="folderIcon" style="display:none" />
-  <div id="cmdPalette"><input type="text" placeholder="Type a command..."></div>
-  <div id="selectTextPopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#222;color:#fff;border:1px solid #444;padding:1em;border-radius:8px;width:400px;z-index:30;box-shadow:0 0 20px #000;">
-    <textarea id="editorTextDump" style="width:100%;height:200px;background:#111;color:#fff;border:none;resize:vertical;font-family:monospace;"></textarea>
-    <div style="text-align:right;margin-top:8px;">
-      <button id="closeSelectTextPopup" style="background:#444;color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;">Close</button>
+
+  <div id="cmdPalette" class="modal">
+    <input type="text" placeholder="type a command..." />
+  </div>
+
+  <div id="selectTextPopup" class="modal">
+    <textarea id="editorTextDump" style="width:100%;height:200px;resize:vertical;"></textarea>
+    <div class="modal-footer">
+      <button id="closeSelectTextPopup">close</button>
     </div>
   </div>
-  <button id="selectTextBtn" title="Show All Text" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;margin:0 10px;position:relative;z-index:21;">
-    📝
-  </button>
+
+  <div id="settingsModal" class="modal">
+    <h2>settings</h2>
+    <div>
+      <label for="zoomSlider">zoom: <span id="zoomValue">100%</span></label>
+      <input type="range" id="zoomSlider" min="50" max="300" value="100" />
+    </div>
+    <div class="modal-footer">
+      <button id="closeSettingsBtn">close</button>
+    </div>
+  </div>
+
   <script src="script.js"></script>
-  <script>
-    const settingsBtn = document.getElementById('settingsBtn');
-
-    // Create settings modal
-    const settingsModal = document.createElement('div');
-    settingsModal.style.display = 'none';
-    settingsModal.style.position = 'fixed';
-    settingsModal.style.top = '50%';
-    settingsModal.style.left = '50%';
-    settingsModal.style.transform = 'translate(-50%, -50%)';
-    settingsModal.style.background = '#222';
-    settingsModal.style.color = '#fff';
-    settingsModal.style.border = '1px solid #444';
-    settingsModal.style.padding = '1.5em';
-    settingsModal.style.borderRadius = '8px';
-    settingsModal.style.zIndex = '100';
-    settingsModal.style.boxShadow = '0 0 20px #000';
-    settingsModal.innerHTML = `
-      <h2 style="margin-top:0;">Settings</h2>
-      <div>
-        <!-- Settings content goes here -->
-        <p>Settings panel content...</p>
-      </div>
-      <div style="margin:20px 0;">
-        <label for="zoomSlider" style="display:block;margin-bottom:8px;">Editor Zoom: <span id="zoomValue">100%</span></label>
-        <input type="range" id="zoomSlider" min="50" max="200" value="100" style="width:100%;">
-      </div>
-      <div style="text-align:right;margin-top:16px;">
-        <button id="closeSettingsBtn" style="background:#444;color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;">Close Settings</button>
-      </div>
-
-    `;
-    document.body.appendChild(settingsModal);
-    const zoomSlider = document.getElementById('zoomSlider');
-    const zoomValue = document.getElementById('zoomValue');
-    const canvas = document.getElementById('cv');
-    zoomSlider.addEventListener('input', function() {
-      zoomValue.textContent = zoomSlider.value + '%';
-      const scale = zoomSlider.value / 100;
-      canvas.style.transform = `scale(${scale})`;
-      canvas.style.transformOrigin = 'center center';
-      // Center the canvas in the viewport
-      zoomSlider.min = 100;
-      zoomSlider.max = 300;
-      canvas.style.position = 'absolute';
-      canvas.style.top = '50%';
-      canvas.style.left = '50%';
-      canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
-    });
-    document.body.appendChild(settingsModal);
-
-    settingsBtn.addEventListener('click', () => {
-      settingsModal.style.display = 'block';
-    });
-
-    settingsModal.addEventListener('click', (e) => {
-      if (e.target.id === 'closeSettingsBtn') {
-        settingsModal.style.display = 'none';
-      }
-    });
-  </script>
 </body>
 </html>
