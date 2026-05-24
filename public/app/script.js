@@ -1364,11 +1364,8 @@ function init() {
       case 'unindent':
         outdentNode();
         break;
-      case 'focus-in':
-        zoomIn();
-        break;
-      case 'focus-out':
-        zoomOut();
+      case 'toggle-complete':
+        toggleComplete();
         break;
     }
   });
