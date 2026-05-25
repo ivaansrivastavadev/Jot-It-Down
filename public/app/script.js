@@ -329,6 +329,19 @@ function escapeHtml(s) {
 function formatNodeText(text, searchQuery) {
   let html = escapeHtml(text);
 
+  // Apply markdown formatting (in order of precedence: code > bold > italic > strikethrough)
+  // Code snippets: `code`
+  html = html.replace(/`([^`]+)`/g, '<span class="code">$1</span>');
+  
+  // Bold: **text**
+  html = html.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+  
+  // Italic: *text*
+  html = html.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
+  
+  // Strikethrough: ~~text~~
+  html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+
   if (searchQuery) {
     const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const re = new RegExp(`(${escaped})`, 'gi');
@@ -354,6 +367,39 @@ function saveCurrentText() {
       node.text = el.textContent || '';
     }
   }
+}
+
+function applyFormatting(before, after) {
+  const el = document.querySelector(`[data-id="${state.selectedId}"] .node-text`);
+  if (!el || state.selectedId === null) return;
+  
+  const sel = window.getSelection();
+  if (sel.rangeCount === 0) return;
+  
+  const range = sel.getRangeAt(0);
+  const selectedText = range.toString();
+  
+  if (selectedText.length === 0) {
+    // No selection, just insert the markers
+    const textNode = document.createTextNode(before + after);
+    range.insertNode(textNode);
+    range.setStartAfter(textNode);
+    range.collapse(true);
+  } else {
+    // Wrap selected text with formatting markers
+    const newText = before + selectedText + after;
+    const textNode = document.createTextNode(newText);
+    range.deleteContents();
+    range.insertNode(textNode);
+    range.setStartAfter(textNode);
+    range.collapse(true);
+  }
+  
+  sel.removeAllRanges();
+  sel.addRange(range);
+  
+  saveCurrentText();
+  render();
 }
 
 function selectNode(id, offset) {

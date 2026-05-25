@@ -203,6 +203,33 @@ body {
   border-color: #c4a820;
 }
 
+strong {
+  color: #d4d0c4;
+  font-weight: bold;
+}
+
+em {
+  color: #d4d0c4;
+  font-style: italic;
+}
+
+del {
+  color: #7a7668;
+  text-decoration: line-through;
+}
+
+.code {
+  display: inline-block;
+  background: #1a1a1a;
+  color: #c4a820;
+  border: 1px solid #2e2b22;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: normal;
+}
+
 #empty-state {
   text-align: center;
   color: #7a7668;

@@ -1,3 +1,4 @@
+- [x] Add MD SUpport for **bold** *italic* ~~strikethrough~~ and `code snippet` with thier exports also working
 - [x] Touch bar update: New icon: Toggle line numbers
 - [x] Align export: MD: replace - to 1. for numbering, for txt same, for json use your own
 - [x] Fix manifest.json
