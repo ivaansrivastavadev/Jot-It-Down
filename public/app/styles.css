@@ -137,7 +137,7 @@ body {
   margin-right: 8px;
   flex-shrink: 0;
   user-select: none;
-  width: 10px;
+  min-width: 10px;
   text-align: center;
   cursor: pointer;
   padding-top: 1px;

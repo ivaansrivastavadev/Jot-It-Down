@@ -1,3 +1,8 @@
+- [x] Touch bar update: New icon: Toggle line numbers
+- [x] Align export: MD: replace - to 1. for numbering, for txt same, for json use your own
+- [x] Fix manifest.json
+- [x] Add keyboard shortcut Ctrl + J to collapse / expand current node
+- [x] Make new feature To make all dots inside a node to be numbered you should be able to toggle the numbers by Ctrl + E and also only apply the number to the children of the highlighted node and if no children toast "No children to number"
 - [x] For ultra-large notes in jot-it-down either add lazy-loading or do anything so the browser dosen't eat memory
 - [x] In settings add option: no keyboard mode the dropdown options are auto (auto-detects), yes, no: if yes selected then show a small bar at the bottom of the screen. Buttons include Undo/Redo, Indent/Unindent Focus in/Focus Out. needed for mobile
 - [x] Add new options in triple-dot-menu: Collapse all & Expand all

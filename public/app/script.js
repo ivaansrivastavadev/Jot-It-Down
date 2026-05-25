@@ -1,6 +1,6 @@
 const state = {
   nextId: 1,
-  root: { id: 0, text: '', children: [], completed: false, collapsed: false },
+  root: { id: 0, text: '', children: [], completed: false, collapsed: false, numbered: false },
   selectedId: null,
   cursorOffset: 0,
   focusIds: [],
@@ -26,12 +26,65 @@ const KEYBINDS = [
   ['shift+tab', 'outdent'],
   ['ctrl+z', 'undo'],
   ['ctrl+shift+z', 'redo'],
+  ['ctrl+j', 'collapse/expand node'],
   ['ctrl+k', 'open search'],
   ['ctrl+l', 'toggle complete'],
+  ['ctrl+e', 'toggle number children'],
   ['ctrl+]', 'zoom into node'],
   ['ctrl+[', 'zoom out'],
   ['ctrl+/', 'toggle this cheat sheet'],
 ];
+
+function showToast(message, duration = 2000) {
+  const existingToast = document.getElementById('toast-message');
+  if (existingToast) {
+    existingToast.remove();
+  }
+  
+  const toast = document.createElement('div');
+  toast.id = 'toast-message';
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #3a3a3a;
+    color: #d4d0c4;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    z-index: 1000;
+    border: 1px solid #4a4840;
+    animation: toast-fade-in 0.3s ease-out;
+  `;
+  
+  document.body.appendChild(toast);
+  
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes toast-fade-in {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+  `;
+  if (!document.querySelector('style[data-toast]')) {
+    style.setAttribute('data-toast', 'true');
+    document.head.appendChild(style);
+  }
+  
+  setTimeout(() => {
+    if (toast.parentNode) {
+      toast.remove();
+    }
+  }, duration);
+}
 
 function getNode(id) {
   function walk(node) {
@@ -63,8 +116,19 @@ function getNodeIndex(id) {
   return parent.children.findIndex(c => c.id === id);
 }
 
+function normalizeNode(node) {
+  if (typeof node.numbered === 'undefined') {
+    node.numbered = false;
+  }
+  if (node.children && Array.isArray(node.children)) {
+    for (const child of node.children) {
+      normalizeNode(child);
+    }
+  }
+}
+
 function createNode(text) {
-  return { id: state.nextId++, text, children: [], completed: false, collapsed: false };
+  return { id: state.nextId++, text, children: [], completed: false, collapsed: false, numbered: false };
 }
 
 function getVisibleNodes() {
@@ -367,7 +431,20 @@ function renderNodeList(container, nodes) {
     if (isSelected) classes += ' selected';
     if (n.completed) classes += ' completed';
 
-    const bulletHtml = `<span class="node-bullet" data-id="${n.id}">•</span>`;
+    let bulletHtml;
+    if (n._depth > 0) {
+      const parent = getNodePath(n.id).slice(-2)[0];
+      const parentNode = parent ? getNode(parent) : null;
+      if (parentNode && parentNode.numbered) {
+        const siblingIndex = parentNode.children.findIndex(c => c.id === n.id) + 1;
+        bulletHtml = `<span class="node-bullet" data-id="${n.id}">${siblingIndex}.</span>`;
+      } else {
+        bulletHtml = `<span class="node-bullet" data-id="${n.id}">•</span>`;
+      }
+    } else {
+      bulletHtml = `<span class="node-bullet" data-id="${n.id}">•</span>`;
+    }
+    
     const toggleHtml = n.children.length > 0 ? `<span class="node-toggle ${n.collapsed ? 'collapsed' : ''}" data-id="${n.id}">${n.collapsed ? '▸' : '▾'}</span>` : '';
 
     let textHtml;
@@ -578,6 +655,20 @@ function expandAll() {
   render();
 }
 
+function toggleNumbering(id) {
+  const node = getNode(id);
+  if (!node) return;
+  
+  if (node.children.length === 0) {
+    showToast('No children to number');
+    return;
+  }
+  
+  node.numbered = !node.numbered;
+  saveSnapshot();
+  render();
+}
+
 function focusOnNode(id) {
   saveCurrentText();
   const path = getNodePath(id);
@@ -732,33 +823,53 @@ function toggleCheatsheet() {
 
 function exportPlainText() {
   let result = '';
-  function walk(node, depth) {
+  function walk(node, depth, parentNumbered, siblingIndex) {
     if (node.id === 0) {
-      for (const child of node.children) walk(child, depth);
+      for (let i = 0; i < node.children.length; i++) {
+        walk(node.children[i], depth, false, i + 1);
+      }
       return;
     }
     const prefix = '  '.repeat(depth);
+    let bullet = '-';
+    if (parentNumbered) {
+      bullet = siblingIndex + '.';
+    }
     const text = node.completed ? `~~${node.text}~~` : node.text;
-    result += prefix + text + '\n';
-    for (const child of node.children) walk(child, depth + 1);
+    result += prefix + bullet + ' ' + text + '\n';
+    for (let i = 0; i < node.children.length; i++) {
+      walk(node.children[i], depth + 1, node.numbered, i + 1);
+    }
   }
-  walk(state.root, 0);
+  for (let i = 0; i < state.root.children.length; i++) {
+    walk(state.root.children[i], 0, false, i + 1);
+  }
   return result;
 }
 
 function exportMarkdown() {
   let result = '';
-  function walk(node, depth) {
+  function walk(node, depth, parentNumbered, siblingIndex) {
     if (node.id === 0) {
-      for (const child of node.children) walk(child, depth);
+      for (let i = 0; i < node.children.length; i++) {
+        walk(node.children[i], depth, false, i + 1);
+      }
       return;
     }
     const checkbox = node.completed ? '[x] ' : '[ ] ';
-    const prefix = depth === 0 ? '- ' : '  '.repeat(depth) + '- ';
+    let bullet = '-';
+    if (parentNumbered) {
+      bullet = siblingIndex + '.';
+    }
+    const prefix = depth === 0 ? bullet + ' ' : '  '.repeat(depth) + bullet + ' ';
     result += prefix + checkbox + node.text + '\n';
-    for (const child of node.children) walk(child, depth + 1);
+    for (let i = 0; i < node.children.length; i++) {
+      walk(node.children[i], depth + 1, node.numbered, i + 1);
+    }
   }
-  walk(state.root, 0);
+  for (let i = 0; i < state.root.children.length; i++) {
+    walk(state.root.children[i], 0, false, i + 1);
+  }
   return result;
 }
 
@@ -768,6 +879,7 @@ function exportJSON() {
       text: node.text,
       completed: node.completed,
       collapsed: node.collapsed,
+      numbered: node.numbered,
       children: node.children.map(serialize),
     };
   }
@@ -786,25 +898,51 @@ function downloadFile(content, filename, mimeType) {
 
 function parseMarkdown(text) {
   const lines = text.split('\n');
-  const root = { id: state.nextId++, text: '', children: [], completed: false, collapsed: false };
+  const root = { id: state.nextId++, text: '', children: [], completed: false, collapsed: false, numbered: false };
   const stack = [{ node: root, indent: -1 }];
 
   for (const line of lines) {
     const match = line.match(/^(\s*)([-*])\s+\[([x ])\]\s+(.*)/);
+    const numberedMatch = line.match(/^(\s*)(\d+)\.\s+\[([x ])\]\s+(.*)/);
     const simpleMatch = line.match(/^(\s*)([-*])\s+(.*)/);
+    const simpleNumberedMatch = line.match(/^(\s*)(\d+)\.\s+(.*)/);
     
-    if (!match && !simpleMatch) continue;
+    if (!match && !numberedMatch && !simpleMatch && !simpleNumberedMatch) continue;
 
-    const indent = match ? match[1].length / 2 : simpleMatch[1].length / 2;
-    const completed = match ? match[3].toLowerCase() === 'x' : false;
-    const text = match ? match[4] : simpleMatch[3];
+    let indent, completed, text, isNumbered = false;
+    
+    if (match) {
+      indent = match[1].length / 2;
+      completed = match[3].toLowerCase() === 'x';
+      text = match[4];
+    } else if (numberedMatch) {
+      indent = numberedMatch[1].length / 2;
+      completed = numberedMatch[3].toLowerCase() === 'x';
+      text = numberedMatch[4];
+      isNumbered = true;
+    } else if (simpleMatch) {
+      indent = simpleMatch[1].length / 2;
+      completed = false;
+      text = simpleMatch[3];
+    } else if (simpleNumberedMatch) {
+      indent = simpleNumberedMatch[1].length / 2;
+      completed = false;
+      text = simpleNumberedMatch[3];
+      isNumbered = true;
+    }
 
     while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
       stack.pop();
     }
 
-    const newNode = { id: state.nextId++, text, children: [], completed, collapsed: false };
+    const newNode = { id: state.nextId++, text, children: [], completed, collapsed: false, numbered: false };
     stack[stack.length - 1].node.children.push(newNode);
+    
+    // If the parent's last item is numbered and this is also numbered, mark parent as numbered
+    if (isNumbered && stack[stack.length - 1].node.children.length === 1) {
+      stack[stack.length - 1].node.numbered = true;
+    }
+    
     stack.push({ node: newNode, indent });
   }
 
@@ -818,6 +956,7 @@ function parseJSON(text) {
       node.id = state.nextId++;
       node.completed = node.completed || false;
       node.collapsed = node.collapsed || false;
+      node.numbered = node.numbered || false;
       if (node.children) {
         for (const child of node.children) {
           restoreIds(child);
@@ -837,7 +976,7 @@ function parseJSON(text) {
 
 function parsePlainText(text) {
   const lines = text.split('\n');
-  const root = { id: state.nextId++, text: '', children: [], completed: false, collapsed: false };
+  const root = { id: state.nextId++, text: '', children: [], completed: false, collapsed: false, numbered: false };
   const stack = [{ node: root, indent: -1 }];
 
   for (const line of lines) {
@@ -857,7 +996,7 @@ function parsePlainText(text) {
       stack.pop();
     }
 
-    const newNode = { id: state.nextId++, text, children: [], completed, collapsed: false };
+    const newNode = { id: state.nextId++, text, children: [], completed, collapsed: false, numbered: false };
     stack[stack.length - 1].node.children.push(newNode);
     stack.push({ node: newNode, indent });
   }
@@ -923,6 +1062,7 @@ function init() {
       state.hideCompleted = saved.hideCompleted || false;
       state.tagFilter = saved.tagFilter || null;
       state.noKeyboardMode = saved.noKeyboardMode || 'auto';
+      normalizeNode(state.root);
     }
   }).finally(() => {
     render();
@@ -1091,6 +1231,22 @@ function init() {
     if (ctrl && e.key === 'k') {
       e.preventDefault();
       openSearch();
+      return;
+    }
+
+    if (ctrl && e.key === 'j') {
+      e.preventDefault();
+      if (state.selectedId !== null) {
+        toggleCollapse(state.selectedId);
+      }
+      return;
+    }
+
+    if (ctrl && e.key === 'e') {
+      e.preventDefault();
+      if (state.selectedId !== null) {
+        toggleNumbering(state.selectedId);
+      }
       return;
     }
 
@@ -1366,6 +1522,11 @@ function init() {
         break;
       case 'toggle-complete':
         toggleComplete();
+        break;
+      case 'toggle-numbering':
+        if (state.selectedId !== null) {
+          toggleNumbering(state.selectedId);
+        }
         break;
     }
   });
