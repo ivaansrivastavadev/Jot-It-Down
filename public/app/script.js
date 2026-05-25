@@ -470,6 +470,13 @@ function updateMenuIcon(active) {
   }
 }
 
+function updateTouchModeToggle() {
+  const toggle = document.getElementById('touch-mode-toggle');
+  if (!toggle) return;
+  const isTouchMode = state.noKeyboardMode === 'yes';
+  toggle.classList.toggle('active', isTouchMode);
+}
+
 function restoreFocus() {
   if (state.selectedId === null) return;
   const el = document.querySelector(`[data-id="${state.selectedId}"] .node-text`);
@@ -1068,7 +1075,7 @@ function init() {
     render();
     updateMenuIcon(state.hideCompleted);
     updateActionBar();
-    document.getElementById('no-keyboard-mode').value = state.noKeyboardMode;
+    updateTouchModeToggle();
   });
 
   setInterval(() => {
@@ -1448,17 +1455,17 @@ function init() {
        render();
        if (state.selectedId !== null) restoreFocus();
        schedulePersist();
-      } else if (action === 'collapse-all') {
-         collapseAll();
-         schedulePersist();
-       } else if (action === 'expand-all') {
-         expandAll();
-         schedulePersist();
-       } else if (action === 'settings') {
-         openSettings();
-       } else if (action === 'version-history') {
-         openVersionHistory();
-       }
+     } else if (action === 'collapse-all') {
+       collapseAll();
+       schedulePersist();
+     } else if (action === 'expand-all') {
+       expandAll();
+       schedulePersist();
+     } else if (action === 'settings') {
+       openSettings();
+     } else if (action === 'version-history') {
+       openVersionHistory();
+     }
    });
 
   versionOverlay.addEventListener('click', (e) => {
@@ -1495,11 +1502,15 @@ function init() {
 
   settingsClose.addEventListener('click', closeSettings);
 
-  document.getElementById('no-keyboard-mode').addEventListener('change', (e) => {
-    state.noKeyboardMode = e.target.value;
-    updateActionBar();
-    schedulePersist();
-  });
+  const touchModeToggle = document.getElementById('touch-mode-toggle');
+  if (touchModeToggle) {
+    touchModeToggle.addEventListener('click', () => {
+      state.noKeyboardMode = state.noKeyboardMode === 'yes' ? 'no' : 'yes';
+      updateTouchModeToggle();
+      updateActionBar();
+      schedulePersist();
+    });
+  }
 
   const actionBar = document.getElementById('action-bar');
   actionBar.addEventListener('click', (e) => {

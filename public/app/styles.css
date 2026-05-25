@@ -671,7 +671,6 @@ body {
 .settings-section {
   border: 1px solid #2e2b22;
   border-radius: 6px;
-  overflow: hidden;
 }
 
 .settings-section-title {
@@ -932,32 +931,61 @@ body {
   height: 24px;
 }
 
-#no-keyboard-mode {
-  display: block;
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
-  padding: 8px 12px;
-  margin: 8px 0;
-  background: #1c1a16;
+  padding: 10px 16px;
+  margin: 0;
+  background: none;
   color: #d4d0c4;
-  border: 1px solid #2e2b22;
-  border-radius: 6px;
+  border: none;
+  border-bottom: 1px solid #2e2b22;
+  border-radius: 0;
   font-family: 'Courier New', monospace;
   font-size: 11px;
   cursor: pointer;
 }
 
-#no-keyboard-mode:hover {
-  border-color: #3d3924;
+.toggle-btn:hover {
+  background: #222018;
 }
 
-#no-keyboard-mode:focus {
-  outline: none;
-  border-color: #c4a820;
+.toggle-label {
+  flex: 1;
+  text-align: left;
 }
 
-#no-keyboard-mode option {
-  background: #1a1a1a;
-  color: #d4d0c4;
+.toggle-switch {
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+  background: #4a4840;
+  border-radius: 10px;
+  position: relative;
+  margin-left: 12px;
+  transition: background 0.2s;
+}
+
+.toggle-switch::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: #d4d0c4;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: left 0.2s;
+}
+
+.toggle-btn.active .toggle-switch {
+  background: #c4a820;
+}
+
+.toggle-btn.active .toggle-switch::before {
+  left: 22px;
 }
 
 /* mobile support */
