@@ -39,6 +39,9 @@
                             <button data-action="expand-all">
                                 <i class="fa-solid fa-expand"></i> expand all
                             </button>
+                            <button data-action="sync">
+                                <i class="fa-solid fa-arrows-rotate"></i> sync
+                            </button>
                             <hr class="menu-sep" />
                             <button data-action="settings">
                                 <i class="fa-solid fa-gear"></i> settings
@@ -193,7 +196,47 @@
             </div>
         </div>
 
+        <div id="sync-overlay">
+            <div id="sync-content">
+                <h1>sync</h1>
+                <div id="sync-body">
+                    <div class="sync-section">
+                        <label>room</label>
+                        <input
+                            type="text"
+                            id="sync-room"
+                            placeholder="enter room name"
+                            spellcheck="false"
+                            autocomplete="off"
+                        />
+                    </div>
+                    <div class="sync-section">
+                        <label>secret</label>
+                        <input
+                            type="password"
+                            id="sync-secret"
+                            placeholder="enter secret"
+                            spellcheck="false"
+                            autocomplete="off"
+                        />
+                    </div>
+                    <div class="sync-checkbox-section">
+                        <input type="checkbox" id="sync-replace-root" />
+                        <label for="sync-replace-root">replace root node</label>
+                    </div>
+                    <div id="sync-status" class="sync-status"></div>
+                </div>
+                <div id="sync-buttons">
+                    <button id="sync-push" class="sync-action-btn">push</button>
+                    <button id="sync-pull" class="sync-action-btn">pull</button>
+                </div>
+                <button id="sync-close">close</button>
+            </div>
+        </div>
+
         <script src="db.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+        <script src="sync.js"></script>
         <script src="script.js"></script>
 
         <!-- umami privacy tracking -->

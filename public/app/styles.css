@@ -89,13 +89,13 @@ body {
 }
 
 #topbar-actions {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  gap: 16px;
-  align-items: center;
+   position: absolute;
+   right: 16px;
+   top: 50%;
+   transform: translateY(-50%);
+   display: flex;
+   gap: 16px;
+   align-items: center;
 }
 
 .menu-sep {
@@ -904,8 +904,171 @@ del {
 }
 
 #import-node-list::-webkit-scrollbar-thumb {
-  background: #2e2b22;
-  border-radius: 3px;
+   background: #2e2b22;
+   border-radius: 3px;
+}
+
+#sync-overlay {
+   display: none;
+   position: fixed;
+   top: 0;
+   left: 0;
+   right: 0;
+   bottom: 0;
+   background: rgba(26, 26, 26, 0.97);
+   z-index: 160;
+   align-items: center;
+   justify-content: center;
+}
+
+#sync-overlay.open {
+   display: flex;
+}
+
+#sync-content {
+   max-width: 400px;
+   width: 100%;
+   padding: 32px;
+   display: flex;
+   flex-direction: column;
+}
+
+#sync-content h1 {
+   font-size: 13px;
+   font-weight: 700;
+   color: #c4a820;
+   margin-bottom: 24px;
+   text-align: center;
+}
+
+#sync-body {
+   flex: 1;
+   margin-bottom: 16px;
+}
+
+.sync-section {
+   margin-bottom: 16px;
+}
+
+.sync-section label {
+   display: block;
+   color: #7a7668;
+   font-size: 10px;
+   text-transform: uppercase;
+   letter-spacing: 1px;
+   margin-bottom: 6px;
+}
+
+.sync-section input {
+   display: block;
+   width: 100%;
+   background: #1c1a16;
+   color: #d4d0c4;
+   border: 1px solid #2e2b22;
+   border-radius: 6px;
+   font-family: 'Courier New', monospace;
+   font-size: 11px;
+   padding: 8px 12px;
+   outline: none;
+}
+
+.sync-section input:focus {
+   border-color: #3d3924;
+}
+
+.sync-section input::placeholder {
+   color: #4a4840;
+}
+
+.sync-checkbox-section {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   margin-bottom: 16px;
+   padding: 0 12px;
+}
+
+.sync-checkbox-section input[type="checkbox"] {
+   width: 16px;
+   height: 16px;
+   cursor: pointer;
+   accent-color: #c4a820;
+}
+
+.sync-checkbox-section label {
+   color: #d4d0c4;
+   font-size: 11px;
+   cursor: pointer;
+   margin: 0;
+}
+
+.sync-status {
+   color: #7a7668;
+   font-size: 11px;
+   padding: 8px 12px;
+   border: 1px solid #2e2b22;
+   border-radius: 6px;
+   background: #1c1a16;
+   margin-bottom: 16px;
+   min-height: 20px;
+   display: flex;
+   align-items: center;
+}
+
+.sync-status.success {
+   color: #6ba82f;
+   border-color: #6ba82f40;
+}
+
+.sync-status.error {
+   color: #d97d7d;
+   border-color: #d97d7d40;
+}
+
+#sync-buttons {
+   display: flex;
+   gap: 8px;
+   margin-bottom: 16px;
+}
+
+.sync-action-btn {
+   flex: 1;
+   background: #1c1a16;
+   border: 1px solid #2e2b22;
+   border-radius: 6px;
+   color: #d4d0c4;
+   font-family: 'Courier New', monospace;
+   font-size: 11px;
+   padding: 10px 16px;
+   cursor: pointer;
+}
+
+.sync-action-btn:hover {
+   background: #222018;
+   border-color: #3d3924;
+}
+
+.sync-action-btn:disabled {
+   opacity: 0.5;
+   cursor: not-allowed;
+}
+
+#sync-close {
+   display: block;
+   width: 100%;
+   background: none;
+   border: none;
+   border-radius: 6px;
+   color: #7a7668;
+   font-family: 'Courier New', monospace;
+   font-size: 11px;
+   padding: 6px 0;
+   cursor: pointer;
+}
+
+#sync-close:hover {
+   color: #d4d0c4;
+   background: #1c1a16;
 }
 
 #action-bar {

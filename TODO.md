@@ -1,3 +1,5 @@
+- [ ] Add a button Called 'Sync' with a good icon see sync.js
+- [x] When clicking sync it should open a popup where there are two fields, one is Room, the other secret and make a new file called sync.js and in that file use GUN.js to make a sync system with two button Push and pull. When clicking push, it should push the entire JSON into the room (secret is for encrypted which is required) and pull pulls the JSON and creates a new node called "{SYNC}" with the sync pulled.
 - [x] Add MD SUpport for **bold** *italic* ~~strikethrough~~ and `code snippet` with thier exports also working
 - [x] Touch bar update: New icon: Toggle line numbers
 - [x] Align export: MD: replace - to 1. for numbering, for txt same, for json use your own

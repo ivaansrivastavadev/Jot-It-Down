@@ -235,6 +235,19 @@ function closeSettings() {
   document.getElementById('settings-overlay').classList.remove('open');
 }
 
+function openSync() {
+  document.getElementById('sync-overlay').classList.add('open');
+  document.getElementById('sync-room').focus();
+}
+
+function closeSync() {
+  document.getElementById('sync-overlay').classList.remove('open');
+  document.getElementById('sync-status').textContent = '';
+  document.getElementById('sync-room').value = '';
+  document.getElementById('sync-secret').value = '';
+  document.getElementById('sync-replace-root').checked = false;
+}
+
 function renderVersionList() {
   const list = document.getElementById('version-list');
   list.innerHTML = '<div class="search-empty">loading...</div>';
@@ -1488,31 +1501,33 @@ function init() {
     }
   });
 
-   menuDropdown.addEventListener('click', (e) => {
-     const btn = e.target.closest('button');
-     if (!btn) return;
-     const action = btn.dataset.action;
-     menuDropdown.classList.remove('open');
-     if (action === 'global-search') {
-       openSearch();
-     } else if (action === 'toggle-hide-completed') {
-       state.hideCompleted = !state.hideCompleted;
-       updateMenuIcon(state.hideCompleted);
-       render();
-       if (state.selectedId !== null) restoreFocus();
-       schedulePersist();
-     } else if (action === 'collapse-all') {
-       collapseAll();
-       schedulePersist();
-     } else if (action === 'expand-all') {
-       expandAll();
-       schedulePersist();
-     } else if (action === 'settings') {
-       openSettings();
-     } else if (action === 'version-history') {
-       openVersionHistory();
-     }
-   });
+    menuDropdown.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      menuDropdown.classList.remove('open');
+      if (action === 'global-search') {
+        openSearch();
+      } else if (action === 'toggle-hide-completed') {
+        state.hideCompleted = !state.hideCompleted;
+        updateMenuIcon(state.hideCompleted);
+        render();
+        if (state.selectedId !== null) restoreFocus();
+        schedulePersist();
+      } else if (action === 'collapse-all') {
+        collapseAll();
+        schedulePersist();
+      } else if (action === 'expand-all') {
+        expandAll();
+        schedulePersist();
+      } else if (action === 'sync') {
+        openSync();
+      } else if (action === 'settings') {
+        openSettings();
+      } else if (action === 'version-history') {
+        openVersionHistory();
+      }
+    });
 
   versionOverlay.addEventListener('click', (e) => {
     if (e.target === versionOverlay) {
@@ -1546,9 +1561,125 @@ function init() {
     }
   });
 
-  settingsClose.addEventListener('click', closeSettings);
+   settingsClose.addEventListener('click', closeSettings);
 
-  const touchModeToggle = document.getElementById('touch-mode-toggle');
+   const syncOverlay = document.getElementById('sync-overlay');
+   const syncClose = document.getElementById('sync-close');
+   const syncRoom = document.getElementById('sync-room');
+   const syncSecret = document.getElementById('sync-secret');
+   const syncStatus = document.getElementById('sync-status');
+   const syncPushBtn = document.getElementById('sync-push');
+   const syncPullBtn = document.getElementById('sync-pull');
+
+   syncOverlay.addEventListener('click', (e) => {
+     if (e.target === syncOverlay) {
+       closeSync();
+       return;
+     }
+   });
+
+   syncClose.addEventListener('click', closeSync);
+
+   syncPushBtn.addEventListener('click', async () => {
+     const room = syncRoom.value.trim();
+     const secret = syncSecret.value.trim();
+
+     if (!room || !secret) {
+       syncStatus.textContent = 'please enter room and secret';
+       syncStatus.classList.add('error');
+       syncStatus.classList.remove('success');
+       return;
+     }
+
+     syncStatus.textContent = 'pushing...';
+     syncStatus.classList.remove('error', 'success');
+     syncPushBtn.disabled = true;
+     syncPullBtn.disabled = true;
+
+     try {
+       const result = await SyncManager.pushToRoom(room, secret, state.root, (status) => {
+         syncStatus.textContent = `pushing... (${status})`;
+       });
+       syncStatus.textContent = result.message;
+       syncStatus.classList.add('success');
+       syncStatus.classList.remove('error');
+       showToast('push successful');
+     } catch (error) {
+       syncStatus.textContent = `error: ${error.message}`;
+       syncStatus.classList.add('error');
+       syncStatus.classList.remove('success');
+       showToast(`push failed: ${error.message}`);
+     } finally {
+       syncPushBtn.disabled = false;
+       syncPullBtn.disabled = false;
+     }
+   });
+
+   syncPullBtn.addEventListener('click', async () => {
+     const room = syncRoom.value.trim();
+     const secret = syncSecret.value.trim();
+     const replaceRoot = document.getElementById('sync-replace-root').checked;
+
+     if (!room || !secret) {
+       syncStatus.textContent = 'please enter room and secret';
+       syncStatus.classList.add('error');
+       syncStatus.classList.remove('success');
+       return;
+     }
+
+     syncStatus.textContent = 'pulling...';
+     syncStatus.classList.remove('error', 'success');
+     syncPushBtn.disabled = true;
+     syncPullBtn.disabled = true;
+
+     try {
+       const result = await SyncManager.pullFromRoom(room, secret, (status) => {
+         syncStatus.textContent = `pulling... (${status})`;
+       });
+       
+       if (replaceRoot) {
+         // replace root node with pulled data
+         if (Array.isArray(result.data)) {
+           state.root.children = result.data;
+         } else if (result.data.children) {
+           state.root.children = result.data.children;
+         } else {
+           state.root.children = [result.data];
+         }
+         showToast('root node replaced');
+       } else {
+         // create a sync node with the pulled data
+         const syncNode = {
+           id: state.nextId++,
+           text: '{SYNC}',
+           children: Array.isArray(result.data) ? result.data : (result.data.children || [result.data]),
+           completed: false,
+           collapsed: false,
+           numbered: false
+         };
+         
+         state.root.children.push(syncNode);
+         showToast('pull successful - added {SYNC} node');
+       }
+       
+       saveSnapshot();
+       render();
+       
+       syncStatus.textContent = result.message;
+       syncStatus.classList.add('success');
+       syncStatus.classList.remove('error');
+     } catch (error) {
+       syncStatus.textContent = `error: ${error.message}`;
+       syncStatus.classList.add('error');
+       syncStatus.classList.remove('success');
+       showToast(`pull failed: ${error.message}`);
+     } finally {
+       syncPushBtn.disabled = false;
+       syncPullBtn.disabled = false;
+     }
+   });
+
+   const touchModeToggle = document.getElementById('touch-mode-toggle');
   if (touchModeToggle) {
     touchModeToggle.addEventListener('click', () => {
       state.noKeyboardMode = state.noKeyboardMode === 'yes' ? 'no' : 'yes';

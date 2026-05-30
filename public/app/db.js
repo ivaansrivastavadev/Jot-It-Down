@@ -1,5 +1,5 @@
 const DB_NAME = 'JotItDown';
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 const STORE_CURRENT = 'state';
 const STORE_VERSIONS = 'versions';
 const CURRENT_KEY = 'current';
