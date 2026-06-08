@@ -1,12 +1,11 @@
 const state = {
   nextId: 1,
-  root: { id: 0, text: '', children: [], completed: false, collapsed: false, numbered: false },
+  root: { id: 0, data: '', children: [], completed: false, collapsed: false, numbered: false, type: 'text' },
   selectedId: null,
   cursorOffset: 0,
   focusIds: [],
   history: [],
   historyIndex: -1,
-  historyMerging: false,
   isSearchOpen: false,
   searchQuery: '',
   isCheatsheetOpen: false,
@@ -19,6 +18,7 @@ const state = {
 let autosaveTimer = null;
 let pendingDeleteId = null;
 let renderScheduled = false;
+let clipboardNode = null;
 
 const KEYBINDS = [
   ['enter', 'new sibling'],
@@ -116,10 +116,37 @@ function getNodeIndex(id) {
   return parent.children.findIndex(c => c.id === id);
 }
 
+function detectOldData(node) {
+  if (typeof node.type === 'undefined') return true;
+  if (node.children && Array.isArray(node.children)) {
+    for (const child of node.children) {
+      if (detectOldData(child)) return true;
+    }
+  }
+  return false;
+}
+
 function normalizeNode(node) {
   if (typeof node.numbered === 'undefined') {
     node.numbered = false;
   }
+  if (typeof node.type === 'undefined') {
+    node.type = 'text';
+  }
+  // migrate old text/imageData format to unified data field
+  if (typeof node.data === 'undefined') {
+    if (typeof node.imageData !== 'undefined' && node.imageData) {
+      node.data = { src: node.imageData };
+      node.type = 'image';
+    } else if (typeof node.text !== 'undefined') {
+      node.data = node.text;
+      node.type = 'text';
+    } else {
+      node.data = '';
+    }
+  }
+  delete node.text;
+  delete node.imageData;
   if (node.children && Array.isArray(node.children)) {
     for (const child of node.children) {
       normalizeNode(child);
@@ -128,7 +155,7 @@ function normalizeNode(node) {
 }
 
 function createNode(text) {
-  return { id: state.nextId++, text, children: [], completed: false, collapsed: false, numbered: false };
+  return { id: state.nextId++, data: text, children: [], completed: false, collapsed: false, numbered: false, type: 'text' };
 }
 
 function getVisibleNodes() {
@@ -170,6 +197,71 @@ function getNodePath(id) {
 
 function cloneNode(node) {
   return { ...node, children: node.children.map(cloneNode) };
+}
+
+function cloneNodeWithNewIds(node) {
+  return {
+    ...node,
+    id: state.nextId++,
+    children: node.children.map(cloneNodeWithNewIds)
+  };
+}
+
+function copyNode(id) {
+  const node = getNode(id);
+  if (!node) return false;
+  clipboardNode = cloneNode(node);
+  
+  // Copy just the text to system clipboard
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(typeof node.data === 'string' ? node.data : '').then(() => {
+      showToast('copied to clipboard');
+    }).catch(() => {
+      showToast('copied to app clipboard');
+    });
+  } else {
+    // Fallback for older browsers or insecure contexts
+    showToast('copied to app clipboard');
+  }
+  
+  return true;
+}
+
+function pasteNodeUnder(targetId) {
+  if (!clipboardNode) {
+    showToast('nothing to paste');
+    return false;
+  }
+  const targetNode = getNode(targetId);
+  if (!targetNode) return false;
+  
+  // Create a new copy with fresh IDs to avoid conflicts
+  const newNode = cloneNodeWithNewIds(clipboardNode);
+  targetNode.children.push(newNode);
+  saveSnapshot();
+  render();
+  showToast('node pasted');
+  return true;
+}
+
+function pasteNodeAbove(targetId) {
+  if (!clipboardNode) {
+    showToast('nothing to paste');
+    return false;
+  }
+  const parent = findParent(targetId);
+  if (!parent) return false;
+  
+  const idx = getNodeIndex(targetId);
+  if (idx < 0) return false;
+  
+  // Create a new copy with fresh IDs to avoid conflicts
+  const newNode = cloneNodeWithNewIds(clipboardNode);
+  parent.children.splice(idx, 0, newNode);
+  saveSnapshot();
+  render();
+  showToast('node pasted');
+  return true;
 }
 
 function persistState() {
@@ -286,7 +378,6 @@ function restoreVersionFromHistory(versionId) {
 }
 
 function saveSnapshot() {
-  if (state.historyMerging) return;
   function clone(node) {
     return { ...node, children: node.children.map(clone) };
   }
@@ -301,12 +392,6 @@ function saveSnapshot() {
   if (state.history.length > 200) state.history.shift();
   state.historyIndex = state.history.length - 1;
   persistState();
-}
-
-function mergeSnapshot() {
-  state.historyMerging = true;
-  saveSnapshot();
-  state.historyMerging = false;
 }
 
 function undo() {
@@ -377,7 +462,7 @@ function saveCurrentText() {
   if (el) {
     const node = getNode(state.selectedId);
     if (node) {
-      node.text = el.textContent || '';
+      node.data = el.textContent || '';
     }
   }
 }
@@ -445,7 +530,7 @@ function render() {
       const node = getNode(state.focusIds[i]);
       if (!node) continue;
       const isLast = i === state.focusIds.length - 1;
-      const label = node.text ? node.text.substring(0, 40) : 'untitled';
+      const label = typeof node.data === 'string' ? node.data.substring(0, 40) : 'untitled';
       if (isLast) {
         items.push(`<span class="bc-item bc-current">${escapeHtml(label)}</span>`);
       } else {
@@ -463,7 +548,7 @@ function render() {
   breadcrumb.innerHTML = bcHtml;
 
   if (state.tagFilter) {
-    const filtered = visibleNodes.filter(n => n.text.includes(state.tagFilter));
+    const filtered = visibleNodes.filter(n => typeof n.data === 'string' && n.data.includes(state.tagFilter));
     if (filtered.length === 0) {
       container.innerHTML = '<div class="search-empty">no nodes with ' + escapeHtml(state.tagFilter) + '</div>';
       return;
@@ -506,17 +591,24 @@ function renderNodeList(container, nodes) {
     
     const toggleHtml = n.children.length > 0 ? `<span class="node-toggle ${n.collapsed ? 'collapsed' : ''}" data-id="${n.id}">${n.collapsed ? '▸' : '▾'}</span>` : '';
 
-    let textHtml;
-    if (isSelected) {
-      textHtml = escapeHtml(n.text) || '<br>';
+    let contentHtml;
+    if (n.type === 'image' && typeof n.data === 'object') {
+      contentHtml = `<img class="node-image" src="${n.data.src}" data-id="${n.id}" />`;
     } else {
-      textHtml = formatNodeText(n.text, null);
+      let textHtml;
+      const displayText = typeof n.data === 'string' ? n.data : '';
+      if (isSelected) {
+        textHtml = escapeHtml(displayText) || '<br>';
+      } else {
+        textHtml = formatNodeText(displayText, null);
+      }
+      contentHtml = `<span class="node-text">${textHtml}</span>`;
     }
 
     html += `<div class="${classes}" data-id="${n.id}" data-depth="${n._depth}" style="padding-left:${indent}px">
       ${toggleHtml}
       ${bulletHtml}
-      <span class="node-text">${textHtml}</span>
+      ${contentHtml}
     </div>`;
   }
   container.innerHTML = html;
@@ -668,7 +760,7 @@ function removeNode(id) {
     const newIdx = visibleIdx > 0 ? Math.min(visibleIdx - 1, visible.length - 1) : 0;
     const target = visible[newIdx];
     state.selectedId = target.id;
-    state.cursorOffset = target.text.length;
+    state.cursorOffset = typeof target.data === 'string' ? target.data.length : 0;
   } else {
     state.selectedId = null;
     state.cursorOffset = 0;
@@ -861,7 +953,7 @@ function performSearch(query) {
   for (const child of state.root.children) walk(child, 0);
 
   const q = query.toLowerCase();
-  const matches = allNodes.filter(n => n.text.toLowerCase().includes(q));
+  const matches = allNodes.filter(n => typeof n.data === 'string' && n.data.toLowerCase().includes(q));
 
   if (matches.length === 0) {
     resultsContainer.innerHTML = '<div class="search-empty">no matches</div>';
@@ -872,7 +964,7 @@ function performSearch(query) {
    for (const m of matches) {
      const path = getNodePath(m.id);
      const context = m._depth > 0 ? 'depth ' + m._depth : 'root';
-     const displayText = m.text.length > 80 ? m.text.substring(0, 80) + '...' : m.text;
+     const displayText = typeof m.data === 'string' ? (m.data.length > 80 ? m.data.substring(0, 80) + '...' : m.data) : '';
      const formatted = formatNodeText(displayText, query);
      html += `<div class="search-result" data-id="${m.id}" tabindex="0">
        <span class="sr-depth">${m._depth}</span>
@@ -887,84 +979,9 @@ function toggleCheatsheet() {
   document.getElementById('cheatsheet-overlay').classList.toggle('open', state.isCheatsheetOpen);
 }
 
-function exportPlainText() {
-  let result = '';
-  function walk(node, depth, parentNumbered, siblingIndex) {
-    if (node.id === 0) {
-      for (let i = 0; i < node.children.length; i++) {
-        walk(node.children[i], depth, false, i + 1);
-      }
-      return;
-    }
-    const prefix = '  '.repeat(depth);
-    let bullet = '-';
-    if (parentNumbered) {
-      bullet = siblingIndex + '.';
-    }
-    const text = node.completed ? `~~${node.text}~~` : node.text;
-    result += prefix + bullet + ' ' + text + '\n';
-    for (let i = 0; i < node.children.length; i++) {
-      walk(node.children[i], depth + 1, node.numbered, i + 1);
-    }
-  }
-  for (let i = 0; i < state.root.children.length; i++) {
-    walk(state.root.children[i], 0, false, i + 1);
-  }
-  return result;
-}
-
-function exportMarkdown() {
-  let result = '';
-  function walk(node, depth, parentNumbered, siblingIndex) {
-    if (node.id === 0) {
-      for (let i = 0; i < node.children.length; i++) {
-        walk(node.children[i], depth, false, i + 1);
-      }
-      return;
-    }
-    const checkbox = node.completed ? '[x] ' : '[ ] ';
-    let bullet = '-';
-    if (parentNumbered) {
-      bullet = siblingIndex + '.';
-    }
-    const prefix = depth === 0 ? bullet + ' ' : '  '.repeat(depth) + bullet + ' ';
-    result += prefix + checkbox + node.text + '\n';
-    for (let i = 0; i < node.children.length; i++) {
-      walk(node.children[i], depth + 1, node.numbered, i + 1);
-    }
-  }
-  for (let i = 0; i < state.root.children.length; i++) {
-    walk(state.root.children[i], 0, false, i + 1);
-  }
-  return result;
-}
-
-function exportJSON() {
-  function serialize(node) {
-    return {
-      text: node.text,
-      completed: node.completed,
-      collapsed: node.collapsed,
-      numbered: node.numbered,
-      children: node.children.map(serialize),
-    };
-  }
-  return JSON.stringify(state.root.children.map(serialize), null, 2);
-}
-
-function downloadFile(content, filename, mimeType) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 function parseMarkdown(text) {
   const lines = text.split('\n');
-  const root = { id: state.nextId++, text: '', children: [], completed: false, collapsed: false, numbered: false };
+  const root = { id: state.nextId++, data: '', children: [], completed: false, collapsed: false, numbered: false };
   const stack = [{ node: root, indent: -1 }];
 
   for (const line of lines) {
@@ -1001,7 +1018,7 @@ function parseMarkdown(text) {
       stack.pop();
     }
 
-    const newNode = { id: state.nextId++, text, children: [], completed, collapsed: false, numbered: false };
+    const newNode = { id: state.nextId++, data: text, children: [], completed, collapsed: false, numbered: false };
     stack[stack.length - 1].node.children.push(newNode);
     
     // If the parent's last item is numbered and this is also numbered, mark parent as numbered
@@ -1023,6 +1040,20 @@ function parseJSON(text) {
       node.completed = node.completed || false;
       node.collapsed = node.collapsed || false;
       node.numbered = node.numbered || false;
+      // migrate old text/imageData to unified data
+      if (typeof node.data === 'undefined') {
+        if (typeof node.imageData !== 'undefined' && node.imageData) {
+          node.data = { src: node.imageData };
+          node.type = 'image';
+        } else if (typeof node.text !== 'undefined') {
+          node.data = node.text;
+          node.type = 'text';
+        } else {
+          node.data = '';
+        }
+      }
+      delete node.text;
+      delete node.imageData;
       if (node.children) {
         for (const child of node.children) {
           restoreIds(child);
@@ -1042,7 +1073,7 @@ function parseJSON(text) {
 
 function parsePlainText(text) {
   const lines = text.split('\n');
-  const root = { id: state.nextId++, text: '', children: [], completed: false, collapsed: false, numbered: false };
+  const root = { id: state.nextId++, data: '', children: [], completed: false, collapsed: false, numbered: false };
   const stack = [{ node: root, indent: -1 }];
 
   for (const line of lines) {
@@ -1062,7 +1093,7 @@ function parsePlainText(text) {
       stack.pop();
     }
 
-    const newNode = { id: state.nextId++, text, children: [], completed, collapsed: false, numbered: false };
+    const newNode = { id: state.nextId++, data: text, children: [], completed, collapsed: false, numbered: false };
     stack[stack.length - 1].node.children.push(newNode);
     stack.push({ node: newNode, indent });
   }
@@ -1087,7 +1118,7 @@ function showImportNodeSelect() {
   let html = '';
   for (const n of visibleNodes) {
     html += `<div class="import-node-item" data-id="${n.id}" tabindex="0">
-      <span class="import-node-text">${escapeHtml(n.text || 'untitled')}</span>
+      <span class="import-node-text">${escapeHtml(typeof n.data === 'string' ? n.data : 'untitled')}</span>
     </div>`;
   }
   list.innerHTML = html;
@@ -1121,6 +1152,18 @@ function init() {
 
   loadCurrent().then(saved => {
     if (saved) {
+      if (detectOldData(saved.root)) {
+        showToast('old indexedDB detected, auto clean? (y/n)', 5000);
+        state._pendingCleanup = saved.root;
+        state.root = { id: 0, data: '', children: [], completed: false, collapsed: false, numbered: false, type: 'text' };
+        state.nextId = saved.nextId;
+        state.selectedId = null;
+        state.focusIds = [];
+        state.hideCompleted = false;
+        state.tagFilter = null;
+        render();
+        return;
+      }
       state.root = saved.root;
       state.nextId = saved.nextId;
       state.selectedId = saved.selectedId;
@@ -1166,8 +1209,19 @@ function init() {
       return;
     }
 
+    if (e.target.classList.contains('node-image')) {
+      if (state.selectedId === id) {
+        openImageFullscreen(id);
+      } else {
+        selectNode(id, 0);
+      }
+      return;
+    }
+
     if (e.target.classList.contains('node-text')) {
-      const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+      const range = document.caretRangeFromPoint
+        ? document.caretRangeFromPoint(e.clientX, e.clientY)
+        : document.caretPositionFromPoint(e.clientX, e.clientY);
       const offset = range ? range.startOffset : 0;
       selectNode(id, offset);
       return;
@@ -1195,6 +1249,26 @@ function init() {
    });
 
   document.addEventListener('keydown', (e) => {
+    if (state._pendingCleanup) {
+      if (e.key === 'y') {
+        e.preventDefault();
+        const oldRoot = state._pendingCleanup;
+        state._pendingCleanup = null;
+        state.root = oldRoot;
+        normalizeNode(state.root);
+        saveSnapshot();
+        render();
+        showToast('cleaned');
+        return;
+      } else if (e.key === 'n') {
+        e.preventDefault();
+        state._pendingCleanup = null;
+        showToast('started fresh');
+        render();
+        return;
+      }
+    }
+
     if (state.isSearchOpen) {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -1245,6 +1319,7 @@ function init() {
 
     if (ctrl && e.key === 'v') {
       e.preventDefault();
+      state._pasteFromKeydown = true;
       if (state.selectedId !== null) {
         const el = document.querySelector(`[data-id="${state.selectedId}"] .node-text`);
         if (el && el.contentEditable === 'true') {
@@ -1277,7 +1352,7 @@ function init() {
             const beforeText = currentText.slice(0, cursorPos);
             const afterText = currentText.slice(cursorPos);
 
-            node.text = beforeText + lines[0];
+            node.data = beforeText + lines[0];
 
             for (let i = 1; i < lines.length; i++) {
               const newText = i === lines.length - 1 ? lines[i] + afterText : lines[i];
@@ -1388,7 +1463,7 @@ function init() {
       if (state.selectedId !== null) {
         const node = getNode(state.selectedId);
         const el = document.querySelector(`[data-id="${state.selectedId}"] .node-text`);
-        const text = el ? el.textContent || '' : (node ? node.text : '');
+        const text = el ? el.textContent || '' : (node ? (typeof node.data === 'string' ? node.data : '') : '');
 
         if (text === '' || text.length === 0) {
           e.preventDefault();
@@ -1649,13 +1724,14 @@ function init() {
          showToast('root node replaced');
        } else {
          // create a sync node with the pulled data
-         const syncNode = {
-           id: state.nextId++,
-           text: '{SYNC}',
-           children: Array.isArray(result.data) ? result.data : (result.data.children || [result.data]),
-           completed: false,
-           collapsed: false,
-           numbered: false
+          const syncNode = {
+            id: state.nextId++,
+            data: '{SYNC}',
+            children: Array.isArray(result.data) ? result.data : (result.data.children || [result.data]),
+            completed: false,
+            collapsed: false,
+            numbered: false,
+            type: 'text'
          };
          
          state.root.children.push(syncNode);
@@ -1782,16 +1858,17 @@ function init() {
     }
 
     if (importMode === 'replace') {
-      state.root.children = nodes;
+      showToast('will replace root in 5 seconds...', 5000);
       setTimeout(() => {
+        state.root.children = nodes;
         saveSnapshot();
         render();
         closeImport();
         closeSettings();
       }, 5000);
-      alert('will replace in 5 seconds...');
     } else {
       importedNodes = nodes;
+      document.getElementById('import-file-input-section').style.display = 'none';
       showImportNodeSelect();
     }
   });
@@ -1799,6 +1876,11 @@ function init() {
   importClose.addEventListener('click', closeImport);
 
   outliner.addEventListener('paste', (e) => {
+    if (state._pasteFromKeydown) {
+      state._pasteFromKeydown = false;
+      return;
+    }
+
     const el = e.target;
     if (!el || !el.classList.contains('node-text')) return;
 
@@ -1832,7 +1914,7 @@ function init() {
     const beforeText = currentText.slice(0, cursorPos);
     const afterText = currentText.slice(cursorPos);
 
-    node.text = beforeText + lines[0];
+    node.data = beforeText + lines[0];
 
     for (let i = 1; i < lines.length; i++) {
       const newText = i === lines.length - 1 ? lines[i] + afterText : lines[i];
@@ -1867,7 +1949,7 @@ function init() {
         if (id === state.selectedId) {
           const node = getNode(state.selectedId);
           if (node) {
-            node.text = el.textContent || '';
+      node.data = el.textContent || '';
           }
           const sel = window.getSelection();
           state.cursorOffset = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).startOffset : 0;
@@ -1895,6 +1977,167 @@ function init() {
       }, 300);
     }
   }, true);
+
+  /* context menu (right-click) */
+  const contextMenu = document.getElementById('context-menu');
+  let contextMenuTargetId = null;
+
+  outliner.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const nodeEl = e.target.closest('.node');
+    if (!nodeEl) return;
+
+    contextMenuTargetId = parseInt(nodeEl.dataset.id, 10);
+    if (!contextMenuTargetId) return;
+
+    // position the menu
+    contextMenu.style.left = e.clientX + 'px';
+    contextMenu.style.top = e.clientY + 'px';
+    contextMenu.classList.add('open');
+  });
+
+  contextMenu.addEventListener('click', (e) => {
+    const btn = e.target.closest('.context-menu-item');
+    if (!btn || contextMenuTargetId === null) return;
+
+    const action = btn.dataset.action;
+    state.selectedId = contextMenuTargetId;
+
+    switch (action) {
+      case 'ctx-delete':
+        deleteNode(contextMenuTargetId);
+        break;
+      case 'ctx-toggle-complete':
+        toggleComplete();
+        break;
+      case 'ctx-collapse-toggle':
+        toggleCollapse(contextMenuTargetId);
+        break;
+      case 'ctx-indent':
+        indentNode();
+        break;
+      case 'ctx-unindent':
+        outdentNode();
+        break;
+      case 'ctx-copy':
+        copyNode(contextMenuTargetId);
+        break;
+      case 'ctx-paste-under':
+        pasteNodeUnder(contextMenuTargetId);
+        break;
+      case 'ctx-paste-above':
+        pasteNodeAbove(contextMenuTargetId);
+        break;
+      case 'ctx-select':
+        selectNode(contextMenuTargetId, 0);
+        break;
+      case 'ctx-convert-to':
+        showConvertSubmenu();
+        return; // Don't close menu
+      case 'ctx-convert-text':
+        convertNodeToText(contextMenuTargetId);
+        break;
+      case 'ctx-convert-image':
+        contextMenu.classList.remove('open');
+        hideConvertSubmenu();
+        convertNodeToImage(contextMenuTargetId);
+        return;
+    }
+
+    contextMenu.classList.remove('open');
+    contextMenuTargetId = null;
+    hideConvertSubmenu();
+    render();
+  });
+
+  // close context menu on click outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.context-menu')) {
+      contextMenu.classList.remove('open');
+      hideConvertSubmenu();
+    }
+  });
+
+  /* image upload handlers */
+  const imageUploadOverlay = document.getElementById('image-upload-overlay');
+  const imageFileInput = document.getElementById('image-file-input');
+  const imageDropZone = document.getElementById('image-upload-drop-zone');
+  const imageUploadClose = document.getElementById('image-upload-close');
+  const imageFullscreenOverlay = document.getElementById('image-fullscreen-overlay');
+  const imageFullscreenDownload = document.getElementById('image-fullscreen-download');
+  const imageFullscreenReplace = document.getElementById('image-fullscreen-replace');
+  const imageFullscreenClose = document.getElementById('image-fullscreen-close');
+
+  // image upload handlers
+  imageDropZone.addEventListener('click', () => {
+    imageFileInput.click();
+  });
+
+  imageDropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    imageDropZone.classList.add('dragover');
+  });
+
+  imageDropZone.addEventListener('dragleave', () => {
+    imageDropZone.classList.remove('dragover');
+  });
+
+  imageDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    imageDropZone.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (pendingImageConvertNodeId !== null) {
+          setNodeImage(pendingImageConvertNodeId, event.target.result);
+        }
+      };
+      reader.readAsDataURL(files[0]);
+    }
+  });
+
+  imageFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (pendingImageConvertNodeId !== null) {
+          setNodeImage(pendingImageConvertNodeId, event.target.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  imageUploadClose.addEventListener('click', closeImageUpload);
+
+  imageUploadOverlay.addEventListener('click', (e) => {
+    if (e.target === imageUploadOverlay) {
+      closeImageUpload();
+    }
+  });
+
+  // fullscreen image handlers
+  imageFullscreenClose.addEventListener('click', closeImageFullscreen);
+
+  imageFullscreenDownload.addEventListener('click', () => {
+    const nodeId = parseInt(imageFullscreenOverlay.dataset.nodeId, 10);
+    downloadImage(nodeId);
+  });
+
+  imageFullscreenReplace.addEventListener('click', () => {
+    const nodeId = parseInt(imageFullscreenOverlay.dataset.nodeId, 10);
+    closeImageFullscreen();
+    replaceImage(nodeId);
+  });
+
+  imageFullscreenOverlay.addEventListener('click', (e) => {
+    if (e.target === imageFullscreenOverlay) {
+      closeImageFullscreen();
+    }
+  });
 }
+
 
 document.addEventListener('DOMContentLoaded', init);

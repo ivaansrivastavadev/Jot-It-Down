@@ -1,4 +1,21 @@
-- [ ] Add a button Called 'Sync' with a good icon see sync.js
+# Monday, 8 June 2026
+- [x] implement this big feature: node types. for now only implement text, file/image and thats it when you right click on a node add option convert to... and if its being converted into a image, it should show drag n drop or click to open file manager. You should be able to resize the image and if the image is selected and you click on it it opens it into fullscreen with button download and replace also. When pressing enter to create new node, the default type is text
+- [x] When copying from right click menu, it is copied to the system clipboard
+- [x] In the right-click menu make the options:
+  1. delete
+  2. indent
+  3. unindent
+  4. collapse/expand
+  5. toggle complete
+  6. copy
+  7. paste under [ctrl + v]
+  8. paste above [alt + v]
+  9. select node
+  And when using copy, plese refer to the TODO above
+- [x] Add a new feature: Right-click menu: you can right-click on any node to on mobile add a triple dot icon on the touch bar right now only make optiones TEST
+
+# Before 8 June 2026
+- [x] Add a button Called 'Sync' with a good icon see sync.js
 - [x] When clicking sync it should open a popup where there are two fields, one is Room, the other secret and make a new file called sync.js and in that file use GUN.js to make a sync system with two button Push and pull. When clicking push, it should push the entire JSON into the room (secret is for encrypted which is required) and pull pulls the JSON and creates a new node called "{SYNC}" with the sync pulled.
 - [x] Add MD SUpport for **bold** *italic* ~~strikethrough~~ and `code snippet` with thier exports also working
 - [x] Touch bar update: New icon: Toggle line numbers

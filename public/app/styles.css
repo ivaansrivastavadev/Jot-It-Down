@@ -1232,6 +1232,236 @@ del {
   }
 }
 
+.context-menu {
+  display: none;
+  position: fixed;
+  background: #1c1a16;
+  border: 1px solid #2e2b22;
+  border-radius: 6px;
+  z-index: 400;
+  min-width: 160px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.context-menu.open {
+  display: block;
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: #d4d0c4;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  padding: 6px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #2e2b22;
+}
+
+.context-menu-item:last-of-type {
+  border-bottom: none;
+}
+
+.context-menu-item i {
+  margin-right: 6px;
+  width: 14px;
+  text-align: center;
+}
+
+.context-menu-item:hover {
+  background: #222018;
+}
+
+.context-menu-sep {
+  border: none;
+  border-top: 1px solid #2e2b22;
+  margin: 0;
+}
+
+.context-menu-submenu {
+  border-top: 1px solid #2e2b22;
+  padding: 6px 0;
+}
+
+.context-menu-submenu .context-menu-item {
+  padding-left: 28px;
+  font-size: 10px;
+}
+
+/* image node styles */
+.node-image {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 4px 0;
+  border: 1px solid #2e2b22;
+  object-fit: contain;
+}
+
+#image-upload-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(26, 26, 26, 0.97);
+  z-index: 170;
+  align-items: center;
+  justify-content: center;
+}
+
+#image-upload-overlay.open {
+  display: flex;
+}
+
+#image-upload-content {
+  max-width: 400px;
+  width: 100%;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+#image-upload-content h1 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #c4a820;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.image-drop-zone {
+  border: 2px dashed #2e2b22;
+  border-radius: 6px;
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.image-drop-zone:hover {
+  border-color: #c4a820;
+  background: #1c1a16;
+}
+
+.image-drop-zone.dragover {
+  border-color: #c4a820;
+  background: #222018;
+}
+
+.image-drop-zone i {
+  font-size: 32px;
+  color: #7a7668;
+}
+
+.image-drop-zone p {
+  color: #d4d0c4;
+  font-size: 12px;
+  margin: 0;
+}
+
+#image-fullscreen-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 500;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+#image-fullscreen-overlay.open {
+  display: flex;
+}
+
+#image-fullscreen-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+#image-fullscreen-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 90vw;
+  max-height: 80vh;
+}
+
+#fullscreen-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+#image-fullscreen-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+#image-fullscreen-download,
+#image-fullscreen-replace,
+#image-fullscreen-close {
+  background: #1c1a16;
+  border: 1px solid #2e2b22;
+  border-radius: 6px;
+  color: #d4d0c4;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  padding: 8px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#image-fullscreen-download:hover,
+#image-fullscreen-replace:hover,
+#image-fullscreen-close:hover {
+  background: #222018;
+  border-color: #3d3924;
+}
+
+#image-upload-close {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #7a7668;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+#image-upload-close:hover {
+  color: #d4d0c4;
+  background: #1c1a16;
+}
+
 /* prevent ios rubber band effect */
 html, body {
   touch-action: none;

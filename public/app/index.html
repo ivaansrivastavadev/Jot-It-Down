@@ -196,6 +196,49 @@
             </div>
         </div>
 
+        <div id="context-menu" class="context-menu">
+            <button class="context-menu-item" data-action="ctx-delete">
+                <i class="fa-solid fa-trash"></i> delete
+            </button>
+            <button class="context-menu-item" data-action="ctx-indent">
+                <i class="fa-solid fa-indent"></i> indent
+            </button>
+            <button class="context-menu-item" data-action="ctx-unindent">
+                <i class="fa-solid fa-outdent"></i> unindent
+            </button>
+            <button class="context-menu-item" data-action="ctx-collapse-toggle">
+                <i class="fa-solid fa-compress"></i> collapse/expand
+            </button>
+            <button class="context-menu-item" data-action="ctx-toggle-complete">
+                <i class="fa-solid fa-check"></i> toggle complete
+            </button>
+            <hr class="context-menu-sep" />
+            <button class="context-menu-item" data-action="ctx-copy">
+                <i class="fa-solid fa-copy"></i> copy
+            </button>
+            <button class="context-menu-item" data-action="ctx-paste-under">
+                <i class="fa-solid fa-paste"></i> paste under
+            </button>
+            <button class="context-menu-item" data-action="ctx-paste-above">
+                <i class="fa-solid fa-paste"></i> paste above
+            </button>
+            <hr class="context-menu-sep" />
+            <button class="context-menu-item" data-action="ctx-select">
+                <i class="fa-solid fa-hand-pointer"></i> select node
+            </button>
+            <button class="context-menu-item" data-action="ctx-convert-to">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> convert to...
+            </button>
+            <div id="context-menu-convert-submenu" class="context-menu-submenu" style="display: none;">
+                <button class="context-menu-item" data-action="ctx-convert-text">
+                    <i class="fa-solid fa-align-left"></i> text
+                </button>
+                <button class="context-menu-item" data-action="ctx-convert-image">
+                    <i class="fa-solid fa-image"></i> image
+                </button>
+            </div>
+        </div>
+
         <div id="sync-overlay">
             <div id="sync-content">
                 <h1>sync</h1>
@@ -234,9 +277,42 @@
             </div>
         </div>
 
+        <div id="image-upload-overlay">
+            <div id="image-upload-content">
+                <h1>convert to image</h1>
+                <div id="image-upload-drop-zone" class="image-drop-zone">
+                    <i class="fa-solid fa-image"></i>
+                    <p>drag & drop image here or click to select</p>
+                </div>
+                <input type="file" id="image-file-input" accept="image/*" style="display: none;" />
+                <button id="image-upload-close">close</button>
+            </div>
+        </div>
+
+        <div id="image-fullscreen-overlay">
+            <div id="image-fullscreen-content">
+                <div id="image-fullscreen-container">
+                    <img id="fullscreen-image" />
+                </div>
+                <div id="image-fullscreen-controls">
+                    <button id="image-fullscreen-download">
+                        <i class="fa-solid fa-download"></i> download
+                    </button>
+                    <button id="image-fullscreen-replace">
+                        <i class="fa-solid fa-rotate"></i> replace
+                    </button>
+                    <button id="image-fullscreen-close">
+                        <i class="fa-solid fa-xmark"></i> close
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <script src="db.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
         <script src="sync.js"></script>
+        <script src="exportlogic.js"></script>
+        <script src="nodetypes.js"></script>
         <script src="script.js"></script>
 
         <!-- umami privacy tracking -->

@@ -52,7 +52,7 @@ async function encryptData(data, secret) {
   combined.set(salt, 0);
   combined.set(iv, salt.length);
   combined.set(new Uint8Array(ciphertext), salt.length + iv.length);
-  return btoa(String.fromCharCode.apply(null, combined));
+  return btoa(Array.from(combined, byte => String.fromCharCode(byte)).join(''));
 }
 
 async function decryptData(encoded, secret) {

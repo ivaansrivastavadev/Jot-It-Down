@@ -63,7 +63,7 @@ function saveVersion(snapshot) {
       timestamp: new Date().toLocaleString(),
       snapshot: snapshot,
     };
-    store.add(version);
+    store.put(version);
     const countReq = store.count();
     countReq.onsuccess = () => {
       if (countReq.result > MAX_VERSIONS) {
