@@ -1,0 +1,19 @@
+[package]
+name = "jot-it-down"
+version = "0.1.0"
+description = "Jot It Down - a minimal infinite depth outliner"
+authors = ["ivaansrivastavadev"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "jot_it_down_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

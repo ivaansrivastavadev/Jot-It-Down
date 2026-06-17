@@ -13,3 +13,4 @@
 13. Don't use emojis unless asked
 14. Try to use lowercase everytime (not block capitals)
 15. Do not generate summary if unprompted
+16. Not to delete tauri/target as deleting will recompile everything
