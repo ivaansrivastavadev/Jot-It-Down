@@ -2137,6 +2137,45 @@ function init() {
       closeImageFullscreen();
     }
   });
+
+  // window controls (tauri only)
+  if (window.__TAURI_INTERNALS__) {
+    const invoke = window.__TAURI_INTERNALS__.invoke;
+
+    const wc = document.createElement('div');
+    wc.id = 'wc';
+    wc.innerHTML = `
+      <button id="wc-minimize" title="minimize"><i class="fa-solid fa-minus"></i></button>
+      <button id="wc-maximize" title="maximize"><i class="fa-solid fa-square"></i></button>
+      <button id="wc-close" title="close"><i class="fa-solid fa-xmark"></i></button>
+    `;
+    document.body.appendChild(wc);
+
+    const style = document.createElement('style');
+    style.textContent = `
+      #wc {
+        position: fixed; top: 0; left: 4px; z-index: 999;
+        display: flex; gap: 2px; padding: 4px;
+        background: rgba(26,26,26,0.7);
+        border-radius: 0 0 6px 6px;
+        border: 1px solid #2e2b22; border-top: none;
+      }
+      #wc button {
+        background: none; border: none; color: #7a7668;
+        width: 32px; height: 22px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 10px; border-radius: 4px;
+        transition: background 0.1s, color 0.1s;
+      }
+      #wc button:hover { background: #2e2b22; color: #d4d0c4; }
+      #wc-close:hover { background: #c03a2b !important; color: #fff !important; }
+    `;
+    document.head.appendChild(style);
+
+    document.getElementById('wc-minimize').addEventListener('click', () => invoke('plugin:window|minimize'));
+    document.getElementById('wc-maximize').addEventListener('click', () => invoke('plugin:window|toggle_maximize'));
+    document.getElementById('wc-close').addEventListener('click', () => invoke('plugin:window|close'));
+  }
 }
 
 

@@ -62,6 +62,7 @@ body {
 #breadcrumb .bc-sep {
   unicode-bidi: embed;
   direction: ltr;
+  -webkit-app-region: no-drag;
 }
 
 #breadcrumb .bc-item {

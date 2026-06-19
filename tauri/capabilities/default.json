@@ -3,6 +3,9 @@
   "description": "Default capabilities for Jot It Down",
   "windows": ["main"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize"
   ]
 }
