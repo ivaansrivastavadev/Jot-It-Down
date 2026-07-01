@@ -427,6 +427,12 @@ function escapeHtml(s) {
 function formatNodeText(text, searchQuery) {
   let html = escapeHtml(text);
 
+  if (searchQuery) {
+    const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(${escaped})`, 'gi');
+    html = html.replace(re, '<span class="hl">$1</span>');
+  }
+
   // Apply markdown formatting (in order of precedence: code > bold > italic > strikethrough)
   // Code snippets: `code`
   html = html.replace(/`([^`]+)`/g, '<span class="code">$1</span>');
@@ -439,12 +445,6 @@ function formatNodeText(text, searchQuery) {
   
   // Strikethrough: ~~text~~
   html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-
-  if (searchQuery) {
-    const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(`(${escaped})`, 'gi');
-    html = html.replace(re, '<span class="hl">$1</span>');
-  }
 
   html = html.replace(/(#[\w\u00C0-\u024F]+|#[\d]+[\w]*)/g, '<span class="tag">$1</span>');
 
@@ -1110,6 +1110,10 @@ function openImport() {
 
 function closeImport() {
   document.getElementById('import-overlay').classList.remove('open');
+  if (importReplaceTimeout) {
+    clearTimeout(importReplaceTimeout);
+    importReplaceTimeout = null;
+  }
 }
 
 function showImportNodeSelect() {
@@ -1267,6 +1271,7 @@ function init() {
         render();
         return;
       }
+      return;
     }
 
     if (state.isSearchOpen) {
@@ -1421,7 +1426,7 @@ function init() {
       const node = state.selectedId ? getNode(state.selectedId) : null;
       if (state.selectedId === null) {
         createFirstNode('');
-      } else if (node && node.children.length > 0) {
+      } else if (node && !node.collapsed && node.children.length > 0) {
         addChild();
       } else {
         addSibling('');
@@ -1800,6 +1805,7 @@ function init() {
   const importClose = document.getElementById('import-close');
   let importMode = null;
   let importedNodes = null;
+  let importReplaceTimeout = null;
 
   importOverlay.addEventListener('click', (e) => {
     if (e.target === importOverlay) {
@@ -1859,7 +1865,8 @@ function init() {
 
     if (importMode === 'replace') {
       showToast('will replace root in 5 seconds...', 5000);
-      setTimeout(() => {
+      importReplaceTimeout = setTimeout(() => {
+        importReplaceTimeout = null;
         state.root.children = nodes;
         saveSnapshot();
         render();
@@ -1990,9 +1997,13 @@ function init() {
     contextMenuTargetId = parseInt(nodeEl.dataset.id, 10);
     if (!contextMenuTargetId) return;
 
-    // position the menu
-    contextMenu.style.left = e.clientX + 'px';
-    contextMenu.style.top = e.clientY + 'px';
+    // position the menu within viewport
+    const menuWidth = 180;
+    const menuHeight = 320;
+    const x = Math.min(e.clientX, window.innerWidth - menuWidth);
+    const y = Math.min(e.clientY, window.innerHeight - menuHeight);
+    contextMenu.style.left = Math.max(0, x) + 'px';
+    contextMenu.style.top = Math.max(0, y) + 'px';
     contextMenu.classList.add('open');
   });
 
