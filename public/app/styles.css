@@ -16,7 +16,7 @@ html, body {
 body {
   background: #1a1a1a;
   color: #d4d0c4;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 15px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -226,7 +226,7 @@ del {
   border: 1px solid #2e2b22;
   border-radius: 3px;
   padding: 2px 6px;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 12px;
   font-weight: normal;
 }
@@ -264,7 +264,7 @@ del {
   color: #d4d0c4;
   border: 1px solid #2e2b22;
   border-radius: 6px;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 13px;
   padding: 8px 12px;
   outline: none;
@@ -387,7 +387,7 @@ del {
 .cheatsheet-key {
   color: #c4a820;
   font-size: 13px;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
 }
 
 .cheatsheet-desc {
@@ -402,7 +402,7 @@ del {
   border: none;
   border-radius: 6px;
   color: #7a7668;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 11px;
   padding: 6px 0;
   margin-top: 16px;
@@ -442,7 +442,7 @@ del {
   border: none;
   border-radius: 6px;
   color: #7a7668;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 13px;
   padding: 2px 6px;
   cursor: pointer;
@@ -479,7 +479,7 @@ del {
   background: none;
   border: none;
   color: #d4d0c4;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 11px;
   padding: 6px 16px;
   cursor: pointer;
@@ -583,7 +583,7 @@ del {
   background: #1e1c14;
   padding: 4px 10px;
   cursor: pointer;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
 }
 
 .version-item .v-restore:hover {
@@ -597,7 +597,7 @@ del {
   border: none;
   border-radius: 6px;
   color: #7a7668;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 11px;
   padding: 6px 0;
   cursor: pointer;
@@ -653,7 +653,7 @@ del {
   border-radius: 4px;
   font-size: 10px;
   padding: 1px 6px;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
 }
 
 #settings-overlay {
@@ -718,7 +718,7 @@ del {
   border: none;
   border-bottom: 1px solid #2e2b22;
   color: #d4d0c4;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 11px;
   padding: 10px 16px;
   cursor: pointer;
@@ -739,7 +739,7 @@ del {
   border: none;
   border-radius: 6px;
   color: #7a7668;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 11px;
   padding: 6px 0;
   cursor: pointer;
@@ -827,7 +827,7 @@ del {
   border: 1px solid #2e2b22;
   border-radius: 6px;
   color: #d4d0c4;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 11px;
   padding: 10px 16px;
   cursor: pointer;
@@ -885,7 +885,7 @@ del {
   border: none;
   border-radius: 6px;
   color: #7a7668;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 11px;
   padding: 6px 0;
   cursor: pointer;
@@ -967,7 +967,7 @@ del {
    color: #d4d0c4;
    border: 1px solid #2e2b22;
    border-radius: 6px;
-   font-family: 'Courier New', monospace;
+   font-family: "Sans", "Segoe UI";
    font-size: 11px;
    padding: 8px 12px;
    outline: none;
@@ -1038,7 +1038,7 @@ del {
    border: 1px solid #2e2b22;
    border-radius: 6px;
    color: #d4d0c4;
-   font-family: 'Courier New', monospace;
+   font-family: "Sans", "Segoe UI";
    font-size: 11px;
    padding: 10px 16px;
    cursor: pointer;
@@ -1061,7 +1061,7 @@ del {
    border: none;
    border-radius: 6px;
    color: #7a7668;
-   font-family: 'Courier New', monospace;
+   font-family: "Sans", "Segoe UI";
    font-size: 11px;
    padding: 6px 0;
    cursor: pointer;
@@ -1093,7 +1093,7 @@ del {
   border: 1px solid #2e2b22;
   border-radius: 6px;
   color: #7a7668;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 14px;
   width: 40px;
   height: 32px;
@@ -1134,7 +1134,7 @@ del {
   border: none;
   border-bottom: 1px solid #2e2b22;
   border-radius: 0;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 11px;
   cursor: pointer;
 }
@@ -1256,7 +1256,7 @@ del {
   background: none;
   border: none;
   color: #d4d0c4;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 11px;
   padding: 6px 16px;
   cursor: pointer;
@@ -1429,7 +1429,7 @@ del {
   border: 1px solid #2e2b22;
   border-radius: 6px;
   color: #d4d0c4;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 11px;
   padding: 8px 16px;
   cursor: pointer;
@@ -1452,7 +1452,7 @@ del {
   border: none;
   border-radius: 6px;
   color: #7a7668;
-  font-family: 'Courier New', monospace;
+  font-family: "Sans", "Segoe UI";
   font-size: 11px;
   padding: 6px 0;
   cursor: pointer;
